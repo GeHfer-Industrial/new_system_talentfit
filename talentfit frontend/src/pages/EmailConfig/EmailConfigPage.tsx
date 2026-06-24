@@ -1,0 +1,166 @@
+import { useState, useEffect, useRef, FormEvent } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import { api } from '../../lib/api'
+import { Card } from '../../components/ui/Card'
+import { Input } from '../../components/ui/Input'
+import { Button } from '../../components/ui/Button'
+
+function useNextSyncCountdown() {
+  const calcSeconds = () => {
+    const now = new Date()
+    const ms = (now.getMinutes() * 60 + now.getSeconds()) * 1000 + now.getMilliseconds()
+    const interval = 15 * 60 * 1000
+    return Math.ceil((interval - (ms % interval)) / 1000)
+  }
+
+  const [seconds, setSeconds] = useState(calcSeconds)
+  const ref = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    ref.current = setInterval(() => setSeconds(calcSeconds()), 1000)
+    return () => { if (ref.current) clearInterval(ref.current) }
+  }, [])
+
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+export default function EmailConfigPage() {
+  const qc = useQueryClient()
+  const { data: config } = useQuery({
+    queryKey: ['email-config'],
+    queryFn: () => api.get('/email/config').then((r) => r.data.data),
+  })
+
+  const [form, setForm] = useState({ host: '', port: 993, user: '', password: '', protocol: 'IMAP', active: true, subjectFilter: 'curriculo' })
+  const [showPassword, setShowPassword] = useState(false)
+  const countdown = useNextSyncCountdown()
+
+  useEffect(() => {
+    if (config) setForm({ ...config })
+  }, [config])
+
+  const backendError = (err: unknown) => {
+    const e = err as { response?: { data?: { message?: string } } }
+    return e?.response?.data?.message ?? 'Erro desconhecido'
+  }
+
+  const save = useMutation({
+    mutationFn: (data: typeof form) => api.post('/email/config', data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['email-config'] }); toast.success('Configuração salva') },
+    onError: (err) => toast.error('Erro ao salvar: ' + backendError(err)),
+  })
+
+  const test = useMutation({
+    mutationFn: () => api.get('/email/test'),
+    onSuccess: (res) => {
+      const { connected, error } = res.data.data
+      if (connected) {
+        toast.success('Conexão bem-sucedida!')
+      } else {
+        toast.error(error ?? 'Falha na conexão — verifique as configurações')
+      }
+    },
+    onError: (err) => toast.error('Erro ao testar: ' + backendError(err)),
+  })
+
+  const sync = useMutation({
+    mutationFn: () => api.post('/email/sync'),
+    onSuccess: (res) => {
+      const processed = res.data.data?.processed ?? 0
+      toast.success(processed > 0 ? `${processed} e-mail(s) processados` : 'Nenhum e-mail novo encontrado')
+    },
+    onError: (err) => toast.error('Erro ao sincronizar: ' + backendError(err)),
+  })
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    const { host, port, user, password, protocol, active, subjectFilter } = form
+    save.mutate({ host, port, user, password, protocol, active, subjectFilter: subjectFilter ?? '' })
+  }
+
+  const set = (field: string, value: string | number | boolean) =>
+    setForm((prev) => ({ ...prev, [field]: value }))
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-xl space-y-6">
+      <Card>
+        <h2 className="font-semibold text-slate-900 mb-4">Configuração IMAP</h2>
+        <div className="space-y-4">
+          <Input label="Host IMAP" placeholder="imap.gmail.com" value={form.host} onChange={(e) => set('host', e.target.value)} />
+          <Input label="Porta" type="number" value={form.port} onChange={(e) => set('port', Number(e.target.value))} />
+          <Input label="Usuário" type="email" placeholder="rh@empresa.com" value={form.user} onChange={(e) => set('user', e.target.value)} />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Senha</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.password}
+                onChange={(e) => set('password', e.target.value)}
+                className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Protocolo</label>
+            <select
+              value={form.protocol}
+              onChange={(e) => set('protocol', e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
+            >
+              <option value="IMAP">IMAP</option>
+              <option value="GMAIL">Gmail API</option>
+              <option value="GRAPH">Microsoft Graph</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Filtro de assunto</label>
+            <input
+              type="text"
+              placeholder="curriculo (deixe vazio para processar todos)"
+              value={form.subjectFilter}
+              onChange={(e) => set('subjectFilter', e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="text-xs text-slate-400">Só processa e-mails cujo assunto contenha este texto (sem distinção de maiúsculas ou acentos)</p>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => set('active', e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Sincronização ativa (a cada 15 min)
+            {form.active && (
+              <span className="ml-1 font-mono text-xs text-slate-400">— próxima em {countdown}</span>
+            )}
+          </label>
+        </div>
+      </Card>
+
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" loading={save.isPending}>Salvar configuração</Button>
+        <Button type="button" variant="secondary" onClick={() => test.mutate()} loading={test.isPending}>
+          Testar conexão
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => sync.mutate()} loading={sync.isPending}>
+          Sincronizar agora
+        </Button>
+      </div>
+    </form>
+  )
+}

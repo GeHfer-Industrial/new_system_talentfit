@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(RECRUITER)
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  RECRUITER
+}
+
+model Job {
+  id          String       @id @default(uuid())
+  title       String
+  department  String
+  description String
+  status      JobStatus    @default(OPEN)
+  keywords    JobKeyword[]
+  resumes     Resume[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+}
+
+model JobKeyword {
+  id      String      @id @default(uuid())
+  jobId   String
+  keyword String
+  type    KeywordType
+  job     Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+enum KeywordType {
+  REQUIRED
+  DESIRED
+}
+
+model Candidate {
+  id         String      @id @default(uuid())
+  name       String
+  email      String?
+  phone      String?
+  resumeFile String?
+  createdAt  DateTime    @default(now())
+  resumes    Resume[]
+  talentPool TalentPool?
+}
+
+model Resume {
+  id                   String         @id @default(uuid())
+  candidateId          String
+  jobId                String?
+  extractedText        String         @db.Text
+  extractedSkills      String[]
+  score                Float          @default(0)
+  classification       Classification
+  classificationEngine String         @default("keyword")
+  aiSummary            String?        @db.Text
+  emailId              String?
+  candidate       Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job             Job?           @relation(fields: [jobId], references: [id])
+  email           EmailRecord?   @relation(fields: [emailId], references: [id])
+  createdAt       DateTime       @default(now())
+}
+
+enum Classification {
+  COMPATIBLE
+  PARTIAL
+  TALENT_POOL
+}
+
+model EmailRecord {
+  id         String   @id @default(uuid())
+  sender     String
+  subject    String
+  receivedAt DateTime
+  processed  Boolean  @default(false)
+  resumes    Resume[]
+  createdAt  DateTime @default(now())
+}
+
+model TalentPool {
+  id          String    @id @default(uuid())
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  addedAt     DateTime  @default(now())
+}
+
+model EmailConfig {
+  id            String        @id @default(uuid())
+  host          String
+  port          Int
+  user          String
+  password      String
+  protocol      EmailProtocol @default(IMAP)
+  active        Boolean       @default(true)
+  subjectFilter String?
+  updatedAt     DateTime      @updatedAt
+}
+
+enum EmailProtocol {
+  IMAP
+  GRAPH
+  GMAIL
+}
+
+model ClassificationConfig {
+  id              String @id @default(uuid())
+  pointsRequired  Int    @default(20)
+  pointsDesired   Int    @default(10)
+  minScoreToMatch Int    @default(40)
+}

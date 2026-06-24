@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Env — NUNCA commitar
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Build outputs
+dist/
+
+# Uploads (arquivos de candidatos ficam no servidor)
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.log
