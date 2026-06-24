@@ -171,7 +171,8 @@ export class ResumeService {
   }
 
   getUploadDir(): string {
-    const dir = this.configService.get<string>('UPLOAD_DIR') ?? './uploads';
+    const configured = this.configService.get<string>('UPLOAD_DIR');
+    const dir = configured ?? (process.env.VERCEL ? '/tmp' : './uploads');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     return dir;
   }
