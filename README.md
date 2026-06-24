@@ -142,3 +142,4 @@ O token `CLASSIFICATION_ENGINE` desacopla a implementação — nenhum consumer 
 | `npm run prisma:migrate` | Cria e aplica migration |
 | `npm run prisma:studio` | Abre Prisma Studio |
 | `npm run seed` | Popula banco com dados iniciais |
+# system_talentfit
