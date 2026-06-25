@@ -16,7 +16,23 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "dist/main.js"
+      "methods": ["OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "https://new-system-talentfit.vercel.app",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,Accept",
+        "Access-Control-Allow-Credentials": "true"
+      },
+      "status": 200,
+      "continue": false
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/main.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://new-system-talentfit.vercel.app",
+        "Access-Control-Allow-Credentials": "true"
+      }
     }
   ]
 }

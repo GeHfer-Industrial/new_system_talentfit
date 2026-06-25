@@ -22,16 +22,14 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    ...(configService.get<string>('FRONTEND_URL') ?? '').split(',').map((u) => u.trim()).filter(Boolean),
-  ];
-
-  app.enableCors({
-    origin: isProduction ? true : allowedOrigins,
-    credentials: true,
-  });
+  if (!isProduction) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      ...(configService.get<string>('FRONTEND_URL') ?? '').split(',').map((u) => u.trim()).filter(Boolean),
+    ];
+    app.enableCors({ origin: allowedOrigins, credentials: true });
+  }
 
   if (!isProduction) {
     const swaggerConfig = new DocumentBuilder()
