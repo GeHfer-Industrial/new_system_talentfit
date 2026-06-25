@@ -46,6 +46,13 @@ export class UsersController {
     return this.usersService.create(dto);
   }
 
+  @Post(':id/resend-invite')
+  @Roles(Role.ADMIN, Role.RECRUITER)
+  @ApiOperation({ summary: 'Reenvia convite por e-mail' })
+  resendInvite(@Param('id') id: string) {
+    return this.usersService.resendInvite(id);
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Remove usuário' })

@@ -62,6 +62,17 @@ export class UsersService {
     });
   }
 
+  async resendInvite(id: string) {
+    const user = await this.findOne(id);
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
+    const { error } = await this.supabaseAdmin.auth.admin.inviteUserByEmail(user.email, {
+      data: { full_name: user.name },
+      redirectTo: `${frontendUrl}/set-password`,
+    });
+    if (error) throw new BadRequestException(error.message);
+    return { message: 'Convite reenviado com sucesso' };
+  }
+
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.user.delete({ where: { id } });

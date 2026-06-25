@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { UserPlus, Trash2, X } from 'lucide-react'
+import { UserPlus, Trash2, X, Send } from 'lucide-react'
 import { api } from '../../lib/api'
 import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -71,6 +71,11 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setConfirmDelete(null)
     },
+  })
+
+  const resendInvite = useMutation({
+    mutationFn: (id: string) => api.post(`/users/${id}/resend-invite`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
 
   const handleCreate = (e: React.FormEvent) => {
@@ -189,11 +194,25 @@ export default function UsersPage() {
                       <Badge variant={roleBadge[u.role] ?? 'neutral'}>{roleLabel[u.role] ?? u.role}</Badge>
                     </td>
                     <td className="px-6 py-3">
-                      {u.inviteAccepted ? (
-                        <Badge variant="success">Aceito</Badge>
-                      ) : (
-                        <Badge variant="warning">Pendente</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {u.inviteAccepted ? (
+                          <Badge variant="success">Aceito</Badge>
+                        ) : (
+                          <>
+                            <Badge variant="warning">Pendente</Badge>
+                            {canCreate && (
+                              <button
+                                onClick={() => resendInvite.mutate(u.id)}
+                                disabled={resendInvite.isPending}
+                                title="Reenviar convite"
+                                className="text-slate-400 hover:text-primary transition-colors disabled:opacity-40"
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-slate-500">
                       {new Date(u.createdAt).toLocaleDateString('pt-BR')}
