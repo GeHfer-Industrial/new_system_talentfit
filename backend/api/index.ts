@@ -20,6 +20,15 @@ async function setup() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
   app.useGlobalInterceptors(new TransformInterceptor());
+  app.enableCors({
+    origin: (process.env.FRONTEND_URL ?? 'https://new-system-talentfit.vercel.app')
+      .split(',')
+      .map((u) => u.trim())
+      .filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  });
   await app.init();
   initialized = true;
 }
