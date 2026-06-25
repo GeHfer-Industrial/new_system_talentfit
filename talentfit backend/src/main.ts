@@ -29,7 +29,7 @@ async function bootstrap() {
   ];
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: isProduction ? true : allowedOrigins,
     credentials: true,
   });
 
