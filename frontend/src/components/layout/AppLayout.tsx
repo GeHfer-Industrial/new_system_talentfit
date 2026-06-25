@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { PageLoader } from '../ui/Spinner'
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -27,7 +28,9 @@ export function AppLayout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
