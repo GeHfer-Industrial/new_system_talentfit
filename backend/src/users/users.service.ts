@@ -21,7 +21,24 @@ export class UsersService {
   }
 
   async findAll() {
-    return this.prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+    const [prismaUsers, { data: supabaseData }] = await Promise.all([
+      this.prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
+      this.supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    ]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabaseMap = new Map<string, any>(
+      (supabaseData?.users ?? []).map((u: any) => [u.email, u]),
+    );
+
+    return prismaUsers.map((u) => {
+      const su = supabaseMap.get(u.email);
+      return {
+        ...u,
+        inviteAccepted: su ? !!su.email_confirmed_at : false,
+        lastSignIn: su?.last_sign_in_at ?? null,
+      };
+    });
   }
 
   async findOne(id: string) {
@@ -31,8 +48,10 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
     const { error } = await this.supabaseAdmin.auth.admin.inviteUserByEmail(dto.email, {
       data: { full_name: dto.name },
+      redirectTo: `${frontendUrl}/set-password`,
     });
     if (error) throw new BadRequestException(error.message);
 

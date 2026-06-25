@@ -18,6 +18,8 @@ interface User {
   email: string
   role: Role
   createdAt: string
+  inviteAccepted: boolean
+  lastSignIn: string | null
 }
 
 const roleBadge: Record<Role, 'danger' | 'info' | 'neutral'> = {
@@ -173,6 +175,7 @@ export default function UsersPage() {
                   <th className="px-6 py-3 font-medium">Nome</th>
                   <th className="px-6 py-3 font-medium">E-mail</th>
                   <th className="px-6 py-3 font-medium">Perfil</th>
+                  <th className="px-6 py-3 font-medium">Convite</th>
                   <th className="px-6 py-3 font-medium">Cadastrado em</th>
                   {canDelete && <th className="px-6 py-3 font-medium" />}
                 </tr>
@@ -184,6 +187,13 @@ export default function UsersPage() {
                     <td className="px-6 py-3 text-slate-600">{u.email}</td>
                     <td className="px-6 py-3">
                       <Badge variant={roleBadge[u.role] ?? 'neutral'}>{roleLabel[u.role] ?? u.role}</Badge>
+                    </td>
+                    <td className="px-6 py-3">
+                      {u.inviteAccepted ? (
+                        <Badge variant="success">Aceito</Badge>
+                      ) : (
+                        <Badge variant="warning">Pendente</Badge>
+                      )}
                     </td>
                     <td className="px-6 py-3 text-slate-500">
                       {new Date(u.createdAt).toLocaleDateString('pt-BR')}
