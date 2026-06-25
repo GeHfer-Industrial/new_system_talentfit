@@ -74,7 +74,14 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const user = await this.findOne(id);
+
+    const { data } = await this.supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const supabaseUser = (data?.users ?? []).find((u: any) => u.email === user.email);
+    if (supabaseUser) {
+      await this.supabaseAdmin.auth.admin.deleteUser(supabaseUser.id);
+    }
+
     return this.prisma.user.delete({ where: { id } });
   }
 }
