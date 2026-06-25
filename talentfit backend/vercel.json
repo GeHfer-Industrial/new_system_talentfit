@@ -1,38 +1,25 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "dist/main.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "dist/**",
-          "node_modules/.prisma/**",
-          "node_modules/@prisma/client/**"
-        ]
-      }
+  "buildCommand": "npx prisma generate",
+  "functions": {
+    "api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "node_modules/.prisma/**,node_modules/@prisma/client/**,prisma/**"
     }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
   ],
-  "routes": [
+  "headers": [
     {
-      "src": "/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "https://new-system-talentfit.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Accept",
-        "Access-Control-Allow-Credentials": "true"
-      },
-      "status": 200,
-      "continue": false
-    },
-    {
-      "src": "/(.*)",
-      "dest": "dist/main.js",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://new-system-talentfit.vercel.app",
-        "Access-Control-Allow-Credentials": "true"
-      }
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://new-system-talentfit.vercel.app" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization,Accept" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+      ]
     }
   ]
 }
