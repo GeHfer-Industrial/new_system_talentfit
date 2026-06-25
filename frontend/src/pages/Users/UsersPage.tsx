@@ -163,7 +163,12 @@ export default function UsersPage() {
           </form>
           {create.isError && (
             <p className="mt-2 text-sm text-red-600">
-              {(create.error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao criar usuário'}
+              {(() => {
+                const msg = (create.error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? ''
+                if (msg.toLowerCase().includes('rate limit')) return 'Limite de e-mails atingido. Aguarde alguns minutos ou configure um SMTP próprio no Supabase.'
+                if (msg.toLowerCase().includes('already been registered')) return 'Este e-mail já está cadastrado.'
+                return msg || 'Erro ao criar usuário'
+              })()}
             </p>
           )}
         </Card>
