@@ -19,6 +19,7 @@ model User {
 enum Role {
   ADMIN
   RECRUITER
+  VIEWER
 }
 
 model Job {

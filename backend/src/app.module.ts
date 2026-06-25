@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { SupabaseAuthGuard } from './common/guards/supabase-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -19,6 +20,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 @Module({
   providers: [
     { provide: APP_GUARD, useClass: SupabaseAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

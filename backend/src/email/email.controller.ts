@@ -5,10 +5,13 @@ import {
   Body,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { Roles } from '../common/decorators/roles.decorator';
 import { EmailService, UpsertEmailConfigDto } from './email.service';
 
 @ApiTags('Email')
 @ApiBearerAuth()
+@Roles(Role.ADMIN)
 @Controller('email')
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}

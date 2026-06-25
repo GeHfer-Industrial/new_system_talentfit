@@ -12,15 +12,23 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../../hooks/useAuth'
+import { useCurrentUser, UserRole } from '../../hooks/useCurrentUser'
 
-const links = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/jobs', icon: Briefcase, label: 'Vagas' },
-  { to: '/resumes', icon: FileText, label: 'Currículos' },
-  { to: '/approved', icon: CheckCircle2, label: 'Aprovados' },
-  { to: '/talent-pool', icon: Star, label: 'Banco de Talentos' },
-  { to: '/email-config', icon: Mail, label: 'Config. E-mail' },
-  { to: '/users', icon: Users, label: 'Usuários' },
+interface NavItem {
+  to: string
+  icon: React.ElementType
+  label: string
+  roles: UserRole[]
+}
+
+const links: NavItem[] = [
+  { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard',          roles: ['ADMIN', 'RECRUITER', 'VIEWER'] },
+  { to: '/jobs',        icon: Briefcase,        label: 'Vagas',              roles: ['ADMIN', 'RECRUITER'] },
+  { to: '/resumes',     icon: FileText,         label: 'Currículos',         roles: ['ADMIN', 'RECRUITER'] },
+  { to: '/approved',    icon: CheckCircle2,     label: 'Aprovados',          roles: ['ADMIN', 'RECRUITER'] },
+  { to: '/talent-pool', icon: Star,             label: 'Banco de Talentos',  roles: ['ADMIN', 'RECRUITER'] },
+  { to: '/email-config',icon: Mail,             label: 'Config. E-mail',     roles: ['ADMIN'] },
+  { to: '/users',       icon: Users,            label: 'Usuários',           roles: ['ADMIN', 'RECRUITER'] },
 ]
 
 interface SidebarProps {
@@ -30,12 +38,15 @@ interface SidebarProps {
 
 export function Sidebar({ mobile, onClose }: SidebarProps) {
   const { session, signOut } = useAuth()
+  const { role } = useCurrentUser()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
+
+  const visibleLinks = role ? links.filter((l) => l.roles.includes(role)) : []
 
   return (
     <div className={clsx('flex flex-col h-full bg-sidebar-bg', mobile ? 'w-full' : 'w-60')}>
@@ -49,7 +60,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {links.map(({ to, icon: Icon, label }) => (
+        {visibleLinks.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
