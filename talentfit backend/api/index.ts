@@ -2,11 +2,12 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
 import { AppModule } from '../src/app.module';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import type { IncomingMessage, ServerResponse } from 'http';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const express: any = require('express');
 const expressServer = express();
 let initialized = false;
 
@@ -25,5 +26,5 @@ async function setup() {
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   await setup();
-  expressServer(req as express.Request, res as express.Response);
+  expressServer(req, res);
 }
