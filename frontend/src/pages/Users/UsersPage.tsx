@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { UserPlus, Trash2, X, Send } from 'lucide-react'
+import { UserPlus, Trash2, X, Send, KeyRound } from 'lucide-react'
 import { api } from '../../lib/api'
 import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -76,6 +76,10 @@ export default function UsersPage() {
   const resendInvite = useMutation({
     mutationFn: (id: string) => api.post(`/users/${id}/resend-invite`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
+  const resetPassword = useMutation({
+    mutationFn: (id: string) => api.post(`/users/${id}/reset-password`),
   })
 
   const handleCreate = (e: React.FormEvent) => {
@@ -244,13 +248,25 @@ export default function UsersPage() {
                             </Button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => setConfirmDelete(u.id)}
-                            className="text-slate-400 hover:text-red-500 transition-colors"
-                            title="Remover usuário"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-2 justify-end">
+                            {u.inviteAccepted && (
+                              <button
+                                onClick={() => resetPassword.mutate(u.id)}
+                                disabled={resetPassword.isPending}
+                                title="Enviar e-mail de redefinição de senha"
+                                className="text-slate-400 hover:text-primary transition-colors disabled:opacity-40"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setConfirmDelete(u.id)}
+                              className="text-slate-400 hover:text-red-500 transition-colors"
+                              title="Remover usuário"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     )}

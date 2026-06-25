@@ -73,6 +73,16 @@ export class UsersService {
     return { message: 'Convite reenviado com sucesso' };
   }
 
+  async resetPassword(id: string) {
+    const user = await this.findOne(id);
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
+    const { error } = await this.supabaseAdmin.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${frontendUrl}/set-password`,
+    });
+    if (error) throw new BadRequestException(error.message);
+    return { message: 'E-mail de redefinição de senha enviado' };
+  }
+
   async remove(id: string) {
     const user = await this.findOne(id);
 

@@ -53,6 +53,13 @@ export class UsersController {
     return this.usersService.resendInvite(id);
   }
 
+  @Post(':id/reset-password')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Envia e-mail de redefinição de senha para o usuário' })
+  resetPassword(@Param('id') id: string) {
+    return this.usersService.resetPassword(id);
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Remove usuário' })
