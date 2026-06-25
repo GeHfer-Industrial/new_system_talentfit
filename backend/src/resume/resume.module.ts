@@ -17,7 +17,7 @@ import { DocxExtractor } from './extractors/docx.extractor';
     MulterModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const uploadDir = configService.get<string>('UPLOAD_DIR') ?? './uploads';
+        const uploadDir = configService.get<string>('UPLOAD_DIR') ?? (process.env.VERCEL ? '/tmp' : './uploads');
         if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
         return {
           storage: diskStorage({
