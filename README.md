@@ -1,7 +1,7 @@
 # TalentFit
 
 Plataforma de triagem automática de currículos para equipes de RH. O sistema lê e-mails corporativos, extrai currículos em PDF/DOCX, pontua candidatos contra vagas cadastradas e organiza os resultados em um painel.
- 
+
 ---
 
 ## Visão Geral
