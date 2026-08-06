@@ -35,12 +35,31 @@ export default function EmailConfigPage() {
     queryFn: () => api.get('/email/config').then((r) => r.data.data),
   })
 
-  const [form, setForm] = useState({ host: '', port: 993, user: '', password: '', protocol: 'IMAP', active: true, subjectFilter: 'curriculo' })
+  const [form, setForm] = useState({
+    host: '',
+    port: 993,
+    user: '',
+    password: '',
+    protocol: 'IMAP',
+    active: true,
+    subjectFilter: 'curriculo',
+    smtpHost: '',
+    smtpPort: 587,
+    sendAutoReply: true,
+  })
   const [showPassword, setShowPassword] = useState(false)
   const countdown = useNextSyncCountdown()
 
   useEffect(() => {
-    if (config) setForm({ ...config })
+    if (config) {
+      setForm((prev) => ({
+        ...prev,
+        ...config,
+        smtpHost: config.smtpHost ?? prev.smtpHost,
+        smtpPort: config.smtpPort ?? prev.smtpPort,
+        sendAutoReply: config.sendAutoReply ?? prev.sendAutoReply,
+      }))
+    }
   }, [config])
 
   const backendError = (err: unknown) => {
@@ -67,6 +86,19 @@ export default function EmailConfigPage() {
     onError: (err) => toast.error('Erro ao testar: ' + backendError(err)),
   })
 
+  const testSmtp = useMutation({
+    mutationFn: () => api.get('/email/test-smtp'),
+    onSuccess: (res) => {
+      const { connected, error } = res.data.data
+      if (connected) {
+        toast.success('Conexão SMTP bem-sucedida!')
+      } else {
+        toast.error(error ?? 'Falha na conexão SMTP — verifique as configurações')
+      }
+    },
+    onError: (err) => toast.error('Erro ao testar SMTP: ' + backendError(err)),
+  })
+
   const sync = useMutation({
     mutationFn: () => api.post('/email/sync'),
     onSuccess: (res) => {
@@ -78,8 +110,19 @@ export default function EmailConfigPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    const { host, port, user, password, protocol, active, subjectFilter } = form
-    save.mutate({ host, port, user, password, protocol, active, subjectFilter: subjectFilter ?? '' })
+    const { host, port, user, password, protocol, active, subjectFilter, smtpHost, smtpPort, sendAutoReply } = form
+    save.mutate({
+      host,
+      port,
+      user,
+      password,
+      protocol,
+      active,
+      subjectFilter: subjectFilter ?? '',
+      smtpHost: smtpHost ?? '',
+      smtpPort,
+      sendAutoReply,
+    })
   }
 
   const set = (field: string, value: string | number | boolean) =>
@@ -152,10 +195,45 @@ export default function EmailConfigPage() {
         </div>
       </Card>
 
+      <Card>
+        <h2 className="font-semibold text-slate-900 mb-4">Resposta automática (SMTP)</h2>
+        <p className="text-xs text-slate-400 mb-4">
+          Ao salvar um currículo recebido por e-mail, responde automaticamente ao remetente com o link do
+          pré-cadastro. Usa o mesmo usuário/senha configurados acima — só a porta/host de envio costumam ser
+          diferentes do IMAP (ex: Gmail usa <span className="font-mono">smtp.gmail.com</span> pra enviar).
+        </p>
+        <div className="space-y-4">
+          <Input
+            label="Host SMTP"
+            placeholder="smtp.gmail.com"
+            value={form.smtpHost}
+            onChange={(e) => set('smtpHost', e.target.value)}
+          />
+          <Input
+            label="Porta SMTP"
+            type="number"
+            value={form.smtpPort}
+            onChange={(e) => set('smtpPort', Number(e.target.value))}
+          />
+          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.sendAutoReply}
+              onChange={(e) => set('sendAutoReply', e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Enviar link de pré-cadastro automaticamente
+          </label>
+        </div>
+      </Card>
+
       <div className="flex flex-wrap gap-3">
         <Button type="submit" loading={save.isPending}>Salvar configuração</Button>
         <Button type="button" variant="secondary" onClick={() => test.mutate()} loading={test.isPending}>
-          Testar conexão
+          Testar conexão IMAP
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => testSmtp.mutate()} loading={testSmtp.isPending}>
+          Testar conexão SMTP
         </Button>
         <Button type="button" variant="ghost" onClick={() => sync.mutate()} loading={sync.isPending}>
           Sincronizar agora

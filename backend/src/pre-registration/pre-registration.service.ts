@@ -6,6 +6,15 @@ import { CreatePreRegistrationDto } from './dto/create-pre-registration.dto';
 export class PreRegistrationService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getStatus(candidateId: string) {
+    const preRegistration = await this.prisma.candidatePreRegistration.findUnique({
+      where: { candidateId },
+      include: { behavioralResult: true },
+    });
+
+    return { completed: !!preRegistration?.behavioralResult };
+  }
+
   async create(dto: CreatePreRegistrationDto) {
     const candidate = await this.prisma.candidate.findUnique({ where: { id: dto.candidateId } });
     if (!candidate) {
