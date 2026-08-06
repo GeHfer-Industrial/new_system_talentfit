@@ -1,11 +1,24 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ChevronRight, CheckCircle2 } from 'lucide-react'
+import { ChevronRight, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
-import { useCreatePreRegistration, PreRegistrationPayload } from '../../hooks/usePreRegistration'
+import { Spinner } from '../../components/ui/Spinner'
+import {
+  useCreatePreRegistration,
+  usePreRegistrationStatus,
+  PreRegistrationPayload,
+} from '../../hooks/usePreRegistration'
 import { useBehavioralQuestions, useSubmitBehavioralResult, CategoryCode } from '../../hooks/useBehavioralProfile'
+
+const QUIZ_SECONDS = 15 * 60
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 function emptyForm(candidateId: string): PreRegistrationPayload {
   return {
@@ -45,10 +58,29 @@ export default function PreRegistrationPage() {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, CategoryCode>>({})
   const [alternativeOrder, setAlternativeOrder] = useState<Record<number, CategoryCode[]>>({})
+  const [secondsLeft, setSecondsLeft] = useState(QUIZ_SECONDS)
 
   const createPreRegistration = useCreatePreRegistration()
+  const { data: status, isLoading: statusLoading } = usePreRegistrationStatus(candidateId)
   const { data: questions } = useBehavioralQuestions()
   const submitResult = useSubmitBehavioralResult()
+
+  useEffect(() => {
+    if (step !== 'quiz') return
+    setSecondsLeft(QUIZ_SECONDS)
+    const interval = setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? 0 : s - 1))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [step])
+
+  useEffect(() => {
+    if (step !== 'quiz' || secondsLeft !== 0) return
+    toast.error('Tempo esgotado! O questionário foi reiniciado.')
+    setAnswers({})
+    setQuestionIndex(0)
+    setSecondsLeft(QUIZ_SECONDS)
+  }, [secondsLeft, step])
 
   useEffect(() => {
     if (!questions || Object.keys(alternativeOrder).length > 0) return
@@ -127,6 +159,19 @@ export default function PreRegistrationPage() {
                 Este link está incompleto. Solicite o link correto ao RH responsável pelo seu processo seletivo.
               </p>
             </div>
+          ) : statusLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner className="h-8 w-8" />
+            </div>
+          ) : status?.completed ? (
+            <div className="text-center py-4">
+              <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-slate-900 mb-1">Teste já realizado</h2>
+              <p className="text-slate-500 text-sm">
+                Identificamos que você já concluiu o pré-cadastro e o questionário. Se acredita que isso é um
+                engano, entre em contato com o RH responsável pelo seu processo seletivo.
+              </p>
+            </div>
           ) : (
             <>
               {step === 'form' && (
@@ -179,6 +224,14 @@ export default function PreRegistrationPage() {
                       <h2 className="text-sm font-medium text-slate-500">
                         Questão {questionIndex + 1} de {questions?.length}
                       </h2>
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs font-semibold ${
+                          secondsLeft <= 60 ? 'text-red-500' : 'text-slate-400'
+                        }`}
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        {formatTime(secondsLeft)}
+                      </span>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
