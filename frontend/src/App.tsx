@@ -17,6 +17,7 @@ const TalentPoolPage = lazy(() => import('./pages/TalentPool/TalentPoolPage'))
 const EmailConfigPage = lazy(() => import('./pages/EmailConfig/EmailConfigPage'))
 const UsersPage = lazy(() => import('./pages/Users/UsersPage'))
 const SetPassword = lazy(() => import('./pages/SetPassword'))
+const PreRegistrationPage = lazy(() => import('./pages/PreRegistration/PreRegistrationPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -42,6 +43,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="/pre-cadastro" element={<PreRegistrationPage />} />
           <Route
             path="/"
             element={

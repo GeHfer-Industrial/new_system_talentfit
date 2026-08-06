@@ -53,14 +53,60 @@ enum KeywordType {
 }
 
 model Candidate {
-  id         String      @id @default(uuid())
-  name       String
-  email      String?
-  phone      String?
-  resumeFile String?
-  createdAt  DateTime    @default(now())
-  resumes    Resume[]
-  talentPool TalentPool?
+  id              String                     @id @default(uuid())
+  name            String
+  email           String?
+  phone           String?
+  resumeFile      String?
+  createdAt       DateTime                   @default(now())
+  resumes         Resume[]
+  talentPool      TalentPool?
+  preRegistration CandidatePreRegistration?
+}
+
+model CandidatePreRegistration {
+  id               String            @id @default(uuid())
+  candidateId      String?           @unique
+  candidate        Candidate?        @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  name             String
+  email            String
+  birthPlace       String
+  birthDate        DateTime
+  rg               String
+  cpf              String
+  fatherName       String
+  motherName       String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  behavioralResult BehavioralResult?
+}
+
+model BehavioralResult {
+  id                String                   @id @default(uuid())
+  preRegistrationId String                   @unique
+  preRegistration   CandidatePreRegistration @relation(fields: [preRegistrationId], references: [id], onDelete: Cascade)
+  pointsE           Int
+  pointsC           Int
+  pointsA           Int
+  pointsV           Int
+  dominantProfile   String
+  secondaryProfile  String
+  pctInspiracao     Float
+  pctImpulso        Float
+  pctExecucao       Float
+  pctEstrategia     Float
+  createdAt         DateTime                 @default(now())
+  answers           BehavioralAnswer[]
+}
+
+model BehavioralAnswer {
+  id            String           @id @default(uuid())
+  resultId      String
+  result        BehavioralResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  questionOrder Int
+  questionText  String
+  answerText    String
+  categoryCode  String
 }
 
 model Resume {

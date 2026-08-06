@@ -120,7 +120,15 @@ export class ResumeService {
   async findOne(id: string) {
     const resume = await this.prisma.resume.findUnique({
       where: { id },
-      include: { candidate: true, job: true, email: true },
+      include: {
+        candidate: {
+          include: {
+            preRegistration: { include: { behavioralResult: { include: { answers: true } } } },
+          },
+        },
+        job: true,
+        email: true,
+      },
     });
     if (!resume) throw new NotFoundException(`Currículo ${id} não encontrado`);
     return resume;

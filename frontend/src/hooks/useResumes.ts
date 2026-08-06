@@ -3,6 +3,43 @@ import { api } from '../lib/api'
 
 export type Classification = 'COMPATIBLE' | 'PARTIAL' | 'TALENT_POOL'
 
+export interface BehavioralAnswer {
+  id: string
+  questionOrder: number
+  questionText: string
+  answerText: string
+  categoryCode: 'E' | 'C' | 'A' | 'V'
+}
+
+export interface BehavioralResult {
+  id: string
+  pointsE: number
+  pointsC: number
+  pointsA: number
+  pointsV: number
+  dominantProfile: 'E' | 'C' | 'A' | 'V'
+  secondaryProfile: 'E' | 'C' | 'A' | 'V'
+  pctInspiracao: number
+  pctImpulso: number
+  pctExecucao: number
+  pctEstrategia: number
+  createdAt: string
+  answers: BehavioralAnswer[]
+}
+
+export interface PreRegistration {
+  id: string
+  name: string
+  email: string
+  birthPlace: string
+  birthDate: string
+  rg: string
+  cpf: string
+  fatherName: string
+  motherName: string
+  behavioralResult: BehavioralResult | null
+}
+
 export interface Resume {
   id: string
   candidateId: string
@@ -14,7 +51,14 @@ export interface Resume {
   classificationEngine: string
   aiSummary: string | null
   createdAt: string
-  candidate: { id: string; name: string; email: string | null; phone: string | null; resumeFile: string | null }
+  candidate: {
+    id: string
+    name: string
+    email: string | null
+    phone: string | null
+    resumeFile: string | null
+    preRegistration: PreRegistration | null
+  }
   job: { id: string; title: string; department: string } | null
 }
 

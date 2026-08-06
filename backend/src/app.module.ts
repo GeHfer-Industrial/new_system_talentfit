@@ -16,6 +16,8 @@ import { ClassificationModule } from './classification/classification.module';
 import { EmailModule } from './email/email.module';
 import { TalentPoolModule } from './talent-pool/talent-pool.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { PreRegistrationModule } from './pre-registration/pre-registration.module';
+import { BehavioralProfileModule } from './behavioral-profile/behavioral-profile.module';
 
 @Module({
   providers: [
@@ -45,6 +47,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     EmailModule,
     TalentPoolModule,
     DashboardModule,
+    PreRegistrationModule,
+    BehavioralProfileModule,
   ],
 })
 export class AppModule {}
