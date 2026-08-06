@@ -158,6 +158,9 @@ model EmailConfig {
   protocol      EmailProtocol @default(IMAP)
   active        Boolean       @default(true)
   subjectFilter String?
+  smtpHost      String?
+  smtpPort      Int?
+  sendAutoReply Boolean       @default(true)
   updatedAt     DateTime      @updatedAt
 }
 

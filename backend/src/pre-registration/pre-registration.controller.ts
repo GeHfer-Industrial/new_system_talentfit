@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../common/decorators/public.decorator';
 import { PreRegistrationService } from './pre-registration.service';
@@ -8,6 +8,13 @@ import { CreatePreRegistrationDto } from './dto/create-pre-registration.dto';
 @Controller('pre-registration')
 export class PreRegistrationController {
   constructor(private readonly preRegistrationService: PreRegistrationService) {}
+
+  @Get('status/:candidateId')
+  @Public()
+  @ApiOperation({ summary: 'Verifica se o candidato já concluiu o pré-cadastro/questionário' })
+  getStatus(@Param('candidateId') candidateId: string) {
+    return this.preRegistrationService.getStatus(candidateId);
+  }
 
   @Post()
   @Public()

@@ -1,8 +1,10 @@
 import { Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResumeService } from '../resume/resume.service';
 import { ImapProvider } from './providers/imap.provider';
+import { SmtpProvider } from './providers/smtp.provider';
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { EmailProtocol } from '@prisma/client';
@@ -37,6 +39,20 @@ export class UpsertEmailConfigDto {
   @IsOptional()
   @IsString()
   subjectFilter?: string;
+
+  @ApiProperty({ required: false, description: 'Host SMTP para envio da resposta automática' })
+  @IsOptional()
+  @IsString()
+  smtpHost?: string;
+
+  @ApiProperty({ required: false, description: 'Porta SMTP para envio da resposta automática' })
+  @IsOptional()
+  @IsInt()
+  smtpPort?: number;
+
+  @ApiProperty({ default: true, description: 'Envia automaticamente o link de pré-cadastro ao candidato' })
+  @IsBoolean()
+  sendAutoReply!: boolean;
 }
 
 @Injectable()
@@ -47,6 +63,8 @@ export class EmailService {
     private readonly prisma: PrismaService,
     private readonly resumeService: ResumeService,
     private readonly imapProvider: ImapProvider,
+    private readonly smtpProvider: SmtpProvider,
+    private readonly configService: ConfigService,
   ) {}
 
   @Cron('*/15 * * * *')
@@ -70,6 +88,38 @@ export class EmailService {
     if (/auth|LOGIN|credential|password|user/i.test(msg)) return 'Falha de autenticação — verifique o usuário e a senha';
     if (/certificate|TLS|SSL/i.test(msg)) return 'Erro de certificado SSL — tente porta 143 sem TLS';
     return msg;
+  }
+
+  private async sendPreRegistrationReply(
+    config: { smtpHost: string | null; smtpPort: number | null; user: string; password: string },
+    to: string,
+    candidateId: string,
+  ) {
+    if (!config.smtpHost || !config.smtpPort) {
+      this.logger.warn('sendAutoReply está ativo, mas o SMTP não está configurado — resposta não enviada');
+      return;
+    }
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
+    const link = `${frontendUrl}/pre-cadastro?candidateId=${candidateId}`;
+
+    try {
+      await this.smtpProvider.sendMail(
+        { host: config.smtpHost, port: config.smtpPort, user: config.user, password: config.password },
+        {
+          to,
+          subject: 'Recebemos seu currículo — GEHFER',
+          html: `
+            <p>Olá! Recebemos seu currículo e ele já está em análise pela nossa equipe.</p>
+            <p>Para continuar seu processo seletivo, complete seu pré-cadastro através do link abaixo:</p>
+            <p><a href="${link}">Preencher pré-cadastro</a></p>
+            <p>Atenciosamente,<br/>Equipe de Recursos Humanos — GEHFER</p>
+          `,
+        },
+      );
+    } catch (err) {
+      this.logger.error(`Erro ao enviar resposta automática para ${to}`, err instanceof Error ? err.message : err);
+    }
   }
 
   async syncNow() {
@@ -103,9 +153,11 @@ export class EmailService {
         data: { sender: msg.sender, subject: msg.subject, receivedAt: msg.receivedAt },
       });
 
+      let candidateId: string | undefined;
+
       for (const attachment of msg.attachments) {
         try {
-          await this.resumeService.uploadAndProcess(
+          const resume = await this.resumeService.uploadAndProcess(
             {
               fieldname: 'file',
               originalname: attachment.originalName,
@@ -120,6 +172,7 @@ export class EmailService {
             },
             emailRecord.id,
           );
+          candidateId ??= resume.candidateId;
         } catch (err) {
           this.logger.error(`Erro ao processar anexo ${attachment.filename}`, err);
         }
@@ -129,6 +182,10 @@ export class EmailService {
         where: { id: emailRecord.id },
         data: { processed: true },
       });
+
+      if (candidateId && msg.senderEmail && config.sendAutoReply) {
+        await this.sendPreRegistrationReply(config, msg.senderEmail, candidateId);
+      }
     }
 
     this.logger.log(`Sincronização concluída: ${messages.length} e-mail(s) processados`);
@@ -158,6 +215,22 @@ export class EmailService {
       this.logger.error('Erro inesperado ao testar conexão IMAP', err);
       return { connected: false, error: this.friendlyImapError(err) };
     }
+  }
+
+  async testSmtpConnection() {
+    const config = await this.prisma.emailConfig.findFirst({ where: { active: true } });
+    if (!config) throw new NotFoundException('Nenhuma configuração de e-mail ativa. Salve as configurações primeiro.');
+    if (!config.smtpHost || !config.smtpPort) {
+      return { connected: false, error: 'Configure o host e a porta SMTP primeiro' };
+    }
+
+    const ok = await this.smtpProvider.testConnection({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      user: config.user,
+      password: config.password,
+    });
+    return { connected: ok, error: ok ? null : 'Falha na conexão SMTP — verifique host, porta, usuário e senha' };
   }
 
   async getConfig() {

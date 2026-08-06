@@ -17,6 +17,7 @@ export interface EmailAttachment {
 
 export interface EmailMessage {
   sender: string;
+  senderEmail: string;
   subject: string;
   receivedAt: Date;
   attachments: EmailAttachment[];
@@ -120,6 +121,7 @@ export class ImapProvider extends EventEmitter {
                       if (attachments.length > 0) {
                         messages.push({
                           sender: parsed.from?.text ?? 'desconhecido',
+                          senderEmail: parsed.from?.value?.[0]?.address ?? '',
                           subject,
                           receivedAt: parsed.date ?? new Date(),
                           attachments,

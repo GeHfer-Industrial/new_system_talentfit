@@ -34,6 +34,12 @@ export class EmailController {
     return this.emailService.testConnection();
   }
 
+  @Get('test-smtp')
+  @ApiOperation({ summary: 'Testa conexão SMTP (envio da resposta automática)' })
+  testSmtpConnection() {
+    return this.emailService.testSmtpConnection();
+  }
+
   @Post('sync')
   @ApiOperation({ summary: 'Dispara sincronização manual de e-mails' })
   sync() {
