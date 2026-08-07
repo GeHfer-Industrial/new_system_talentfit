@@ -7,12 +7,38 @@ export interface JobWithKeywords {
   keywords: Array<{ keyword: string; type: KeywordType }>;
 }
 
+export interface CandidateExperience {
+  company: string;
+  role: string;
+  startDate: string;
+  endDate?: string;
+  current?: boolean;
+  description?: string;
+}
+
+export interface CandidateEducation {
+  institution: string;
+  course: string;
+  level: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface CandidateLanguage {
+  language: string;
+  level: string;
+}
+
 export interface ClassificationResult {
   jobId: string | null;
   score: number;
   classification: Classification;
   matchedKeywords: string[];
   candidateSkills: string[];
+  candidateExperiences: CandidateExperience[];
+  candidateEducations: CandidateEducation[];
+  candidateLanguages: CandidateLanguage[];
   aiSummary: string | null;
   engine: string;
 }
@@ -77,6 +103,9 @@ export class KeywordClassificationEngine implements IClassificationEngine {
       classification,
       matchedKeywords: bestMatches,
       candidateSkills: bestMatches,
+      candidateExperiences: [],
+      candidateEducations: [],
+      candidateLanguages: [],
       aiSummary: null,
       engine: 'keyword',
     };

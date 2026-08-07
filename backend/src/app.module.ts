@@ -18,6 +18,7 @@ import { TalentPoolModule } from './talent-pool/talent-pool.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PreRegistrationModule } from './pre-registration/pre-registration.module';
 import { BehavioralProfileModule } from './behavioral-profile/behavioral-profile.module';
+import { DigitalResumeModule } from './digital-resume/digital-resume.module';
 
 @Module({
   providers: [
@@ -49,6 +50,7 @@ import { BehavioralProfileModule } from './behavioral-profile/behavioral-profile
     DashboardModule,
     PreRegistrationModule,
     BehavioralProfileModule,
+    DigitalResumeModule,
   ],
 })
 export class AppModule {}

@@ -7,12 +7,25 @@ export class PreRegistrationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getStatus(candidateId: string) {
-    const preRegistration = await this.prisma.candidatePreRegistration.findUnique({
-      where: { candidateId },
-      include: { behavioralResult: true },
-    });
+    const [preRegistration, resume] = await Promise.all([
+      this.prisma.candidatePreRegistration.findUnique({
+        where: { candidateId },
+        include: { behavioralResult: true },
+      }),
+      this.prisma.resume.findFirst({
+        where: { candidateId },
+        orderBy: { createdAt: 'desc' },
+        select: { extractedSkills: true, extractedExperiences: true, extractedEducations: true, extractedLanguages: true },
+      }),
+    ]);
 
-    return { completed: !!preRegistration?.behavioralResult };
+    return {
+      completed: !!preRegistration?.behavioralResult,
+      extractedSkills: resume?.extractedSkills ?? [],
+      extractedExperiences: resume?.extractedExperiences ?? [],
+      extractedEducations: resume?.extractedEducations ?? [],
+      extractedLanguages: resume?.extractedLanguages ?? [],
+    };
   }
 
   async create(dto: CreatePreRegistrationDto) {
