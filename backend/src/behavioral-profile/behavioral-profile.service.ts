@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CategoryCode, PROFILES, QUADRANTS, QUESTIONS } from './behavioral-content';
 import { SubmitBehavioralResultDto } from './dto/submit-behavioral-result.dto';
@@ -16,6 +16,13 @@ export class BehavioralProfileService {
   }
 
   async submitResult(dto: SubmitBehavioralResultDto) {
+    const existing = await this.prisma.behavioralResult.findUnique({
+      where: { preRegistrationId: dto.preRegistrationId },
+    });
+    if (existing) {
+      throw new ForbiddenException('Este questionário já foi respondido e não pode ser refeito.');
+    }
+
     const orders = dto.answers.map((a) => a.questionOrder);
     const uniqueOrders = new Set(orders);
     if (uniqueOrders.size !== QUESTIONS.length || QUESTIONS.some((q) => !uniqueOrders.has(q.order))) {
@@ -50,8 +57,6 @@ export class BehavioralProfileService {
     const pctImpulso = pct(...QUADRANTS.IMPULSO.categories);
     const pctExecucao = pct(...QUADRANTS.EXECUCAO.categories);
     const pctEstrategia = pct(...QUADRANTS.ESTRATEGIA.categories);
-
-    await this.prisma.behavioralResult.deleteMany({ where: { preRegistrationId: dto.preRegistrationId } });
 
     return this.prisma.behavioralResult.create({
       data: {

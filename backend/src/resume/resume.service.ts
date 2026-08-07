@@ -103,7 +103,11 @@ export class ResumeService {
         ...(filters?.jobId && { jobId: filters.jobId }),
       },
       include: {
-        candidate: true,
+        candidate: {
+          include: {
+            preRegistration: { select: { id: true, behavioralResult: { select: { id: true } } } },
+          },
+        },
         job: { select: { id: true, title: true, department: true } },
       },
       orderBy: { createdAt: 'desc' },

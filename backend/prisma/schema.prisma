@@ -149,6 +149,14 @@ model Education {
   endDate         DateTime?
 }
 
+model LanguageSkill {
+  id              String        @id @default(uuid())
+  digitalResumeId String
+  digitalResume   DigitalResume @relation(fields: [digitalResumeId], references: [id], onDelete: Cascade)
+  language        String
+  level           LanguageLevel
+}
+
 enum EducationLevel {
   ENSINO_MEDIO
   TECNICO

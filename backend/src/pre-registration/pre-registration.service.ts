@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePreRegistrationDto } from './dto/create-pre-registration.dto';
 
@@ -29,9 +29,15 @@ export class PreRegistrationService {
   }
 
   async create(dto: CreatePreRegistrationDto) {
-    const candidate = await this.prisma.candidate.findUnique({ where: { id: dto.candidateId } });
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { id: dto.candidateId },
+      include: { preRegistration: { include: { behavioralResult: true } } },
+    });
     if (!candidate) {
       throw new NotFoundException('Link inválido — candidato não encontrado');
+    }
+    if (candidate.preRegistration?.behavioralResult) {
+      throw new ForbiddenException('Este processo já foi concluído e não pode mais ser alterado.');
     }
 
     const data = {

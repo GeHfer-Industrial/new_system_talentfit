@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Classification } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
 
@@ -94,6 +95,9 @@ export class TalentPoolService {
       await this.prisma.resume.update({
         where: { id: resume.id },
         data: {
+          score: result.score,
+          classification: result.classification,
+          jobId: result.classification === Classification.TALENT_POOL ? null : result.jobId ?? undefined,
           extractedSkills: result.candidateSkills.length
             ? result.candidateSkills
             : result.matchedKeywords,
@@ -103,7 +107,10 @@ export class TalentPoolService {
       });
 
       processed++;
-      if (result.classification !== 'TALENT_POOL') nowCompatible++;
+      if (result.classification !== Classification.TALENT_POOL) {
+        nowCompatible++;
+        await this.prisma.talentPool.delete({ where: { id: entry.id } });
+      }
     }
 
     return { processed, nowCompatible };
@@ -135,6 +142,9 @@ export class TalentPoolService {
     await this.prisma.resume.update({
       where: { id: resume.id },
       data: {
+        score: result.score,
+        classification: result.classification,
+        jobId: result.classification === Classification.TALENT_POOL ? null : result.jobId ?? undefined,
         extractedSkills: result.candidateSkills.length
           ? result.candidateSkills
           : result.matchedKeywords,
@@ -143,7 +153,12 @@ export class TalentPoolService {
       },
     });
 
-    return { updated: true, classification: result.classification };
+    const promoted = result.classification !== Classification.TALENT_POOL;
+    if (promoted) {
+      await this.prisma.talentPool.delete({ where: { candidateId } });
+    }
+
+    return { updated: true, classification: result.classification, promoted };
   }
 
   async associateToJob(candidateId: string, jobId: string) {

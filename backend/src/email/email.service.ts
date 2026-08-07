@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -90,6 +90,17 @@ export class EmailService {
     return msg;
   }
 
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private buildPreRegistrationEmailHtml(candidateName: string, link: string, logoUrl: string): string {
+    const firstName = this.escapeHtml(candidateName?.trim().split(/\s+/)[0] || '');
   private buildPreRegistrationEmailHtml(candidateName: string, link: string, logoUrl: string): string {
     const firstName = candidateName?.trim().split(/\s+/)[0] || '';
 
@@ -153,6 +164,7 @@ export class EmailService {
 
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
     const link = `${frontendUrl}/pre-cadastro?candidateId=${candidateId}`;
+    const logoUrl = `${frontendUrl}/logo_principal_png.png`;
     const logoUrl = `${frontendUrl}/logo_principal.svg`;
 
     try {
@@ -283,20 +295,33 @@ export class EmailService {
   }
 
   async getConfig() {
-    return this.prisma.emailConfig.findFirst({ orderBy: { updatedAt: 'desc' } });
+    const config = await this.prisma.emailConfig.findFirst({ orderBy: { updatedAt: 'desc' } });
+    if (!config) return null;
+    const { password, ...rest } = config;
+    return { ...rest, hasPassword: !!password };
   }
 
   async upsertConfig(dto: UpsertEmailConfigDto) {
     try {
       const existing = await this.prisma.emailConfig.findFirst();
+
+      if (!existing && !dto.password) {
+        throw new BadRequestException('Informe a senha para configurar o e-mail.');
+      }
+
+      // Senha vazia = manter a senha atual (a tela nunca recebe a senha real de volta do backend).
+      const { password, ...rest } = dto;
+      const data = password ? { ...rest, password } : rest;
+
       if (existing) {
         return await this.prisma.emailConfig.update({
           where: { id: existing.id },
-          data: { ...dto },
+          data,
         });
       }
-      return await this.prisma.emailConfig.create({ data: dto as Parameters<typeof this.prisma.emailConfig.create>[0]['data'] });
+      return await this.prisma.emailConfig.create({ data: data as Parameters<typeof this.prisma.emailConfig.create>[0]['data'] });
     } catch (err) {
+      if (err instanceof BadRequestException) throw err;
       this.logger.error('Erro ao salvar configuração de e-mail', err);
       throw new InternalServerErrorException('Erro ao salvar: ' + (err instanceof Error ? err.message : err));
     }

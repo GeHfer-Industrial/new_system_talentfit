@@ -11,6 +11,7 @@ import {
   IsUUID,
   ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { EducationLevel, EducationStatus, LanguageLevel } from '@prisma/client';
 
 export class WorkExperienceDto {
@@ -33,6 +34,7 @@ export class WorkExperienceDto {
   @IsDateString()
   endDate?: string;
 
+  @ApiProperty({ required: false, default: false })
   @ApiProperty({ default: false })
   @IsOptional()
   @IsBoolean()
@@ -98,18 +100,21 @@ export class CreateDigitalResumeDto {
 
   @ApiProperty({ type: [WorkExperienceDto], required: false })
   @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => WorkExperienceDto)
   experiences?: WorkExperienceDto[];
 
   @ApiProperty({ type: [EducationDto], required: false })
   @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => EducationDto)
   educations?: EducationDto[];
 
   @ApiProperty({ type: [LanguageSkillDto], required: false })
   @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => LanguageSkillDto)
   languages?: LanguageSkillDto[];

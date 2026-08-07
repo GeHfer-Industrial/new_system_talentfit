@@ -11,6 +11,7 @@ export class DigitalResumeController {
 
   @Post()
   @Public()
+  @ApiOperation({ summary: 'Recebe o currículo digital (estilo Gupy) de um candidato' })
   @ApiOperation({ summary: 'Recebe o currículo digital preenchido pelo candidato' })
   create(@Body() dto: CreateDigitalResumeDto) {
     return this.digitalResumeService.create(dto);

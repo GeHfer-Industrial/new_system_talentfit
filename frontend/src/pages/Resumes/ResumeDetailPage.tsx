@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Download, Trash2, Mail, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Mail, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useResume, useUpdateClassification, useDeleteResume, Classification } from '../../hooks/useResumes'
 import { useJobs } from '../../hooks/useJobs'
@@ -71,7 +71,6 @@ export default function ResumeDetailPage() {
   const updateClassification = useUpdateClassification()
   const deleteResume = useDeleteResume()
   const navigate = useNavigate()
-  const [showText, setShowText] = useState(false)
   const [changeJobOpen, setChangeJobOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState('')
   const [pendingAction, setPendingAction] = useState<string | null>(null)
@@ -99,19 +98,34 @@ export default function ResumeDetailPage() {
   const preRegistration = resume.candidate.preRegistration
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between print:hidden">
         <Link to="/resumes" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <ArrowLeft className="h-4 w-4" /> Voltar para currículos
         </Link>
-        <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)} loading={deleteResume.isPending}>
-          <Trash2 className="h-4 w-4" />
-          Excluir currículo
-        </Button>
+        <div className="flex items-center gap-2">
+          {resume.candidate.resumeFile && (
+            <a
+              href={`${import.meta.env.VITE_API_URL}/files/${resume.candidate.resumeFile}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+            >
+              <Button variant="secondary" size="sm">
+                <Download className="h-4 w-4" />
+                Baixar currículo original
+              </Button>
+            </a>
+          )}
+          <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)} loading={deleteResume.isPending}>
+            <Trash2 className="h-4 w-4" />
+            Excluir currículo
+          </Button>
+        </div>
       </div>
 
       <div
-        className={`grid grid-cols-1 ${preRegistration ? 'lg:grid-cols-[1fr_380px]' : ''} gap-6 items-start print:grid-cols-1`}
+        className={`grid grid-cols-1 ${preRegistration ? 'lg:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_440px]' : ''} gap-6 items-start print:grid-cols-1`}
       >
         <div className="space-y-6">
           <Card className="print:hidden">
@@ -173,7 +187,7 @@ export default function ResumeDetailPage() {
             </div>
           </Card>
 
-          <div className="columns-1 md:columns-2 gap-6 print:columns-none">
+          <div className="columns-1 md:columns-2 xl:columns-3 gap-6 print:columns-none">
             {(resume.aiSummary || resume.extractedSkills.length > 0) && (
               <Card className="break-inside-avoid mb-6 print:hidden">
                 {resume.aiSummary && (
@@ -263,39 +277,6 @@ export default function ResumeDetailPage() {
                   </Button>
                 </a>
               </div>
-            </Card>
-
-            <Card className="break-inside-avoid mb-6 print:hidden">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  onClick={() => setShowText(!showText)}
-                  className="flex items-center gap-2 flex-1 text-left min-w-0"
-                >
-                  <h3 className="font-semibold text-slate-900 truncate">Texto extraído do currículo</h3>
-                  <ChevronDown
-                    className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${showText ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                {resume.candidate.resumeFile && (
-                  <a
-                    href={`${import.meta.env.VITE_API_URL}/files/${resume.candidate.resumeFile}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                    className="shrink-0"
-                  >
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                      Baixar original
-                    </Button>
-                  </a>
-                )}
-              </div>
-              {showText && (
-                <pre className="mt-4 text-xs text-slate-600 bg-slate-50 rounded-lg p-4 overflow-auto max-h-64 whitespace-pre-wrap">
-                  {resume.extractedText}
-                </pre>
-              )}
             </Card>
 
             {preRegistration?.digitalResume && (
