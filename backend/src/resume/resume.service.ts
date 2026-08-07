@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
-import { Classification } from '@prisma/client';
+import { Classification, Prisma } from '@prisma/client';
 
 interface ResumeFilters {
   classification?: Classification;
@@ -67,6 +67,9 @@ export class ResumeService {
         jobId: result.jobId ?? undefined,
         extractedText,
         extractedSkills: result.candidateSkills.length ? result.candidateSkills : result.matchedKeywords,
+        extractedExperiences: result.candidateExperiences as unknown as Prisma.InputJsonValue,
+        extractedEducations: result.candidateEducations as unknown as Prisma.InputJsonValue,
+        extractedLanguages: result.candidateLanguages as unknown as Prisma.InputJsonValue,
         score: result.score,
         classification: result.classification,
         classificationEngine: result.engine,
@@ -110,7 +113,11 @@ export class ResumeService {
         ...(filters?.jobId && { jobId: filters.jobId }),
       },
       include: {
-        candidate: true,
+        candidate: {
+          include: {
+            preRegistration: { select: { id: true, behavioralResult: { select: { id: true } } } },
+          },
+        },
         job: { select: { id: true, title: true, department: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -123,7 +130,19 @@ export class ResumeService {
       include: {
         candidate: {
           include: {
-            preRegistration: { include: { behavioralResult: { include: { answers: true } } } },
+            preRegistration: {
+              include: {
+                behavioralResult: { include: { answers: true } },
+                digitalResume: {
+                  include: {
+                    experiences: true,
+                    educations: true,
+                    languages: true,
+                    desiredJob: { select: { id: true, title: true, department: true } },
+                  },
+                },
+              },
+            },
           },
         },
         job: true,

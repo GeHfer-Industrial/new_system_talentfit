@@ -7,5 +7,6 @@ import { ClassificationModule } from '../classification/classification.module';
   imports: [ClassificationModule],
   controllers: [TalentPoolController],
   providers: [TalentPoolService],
+  exports: [TalentPoolService],
 })
 export class TalentPoolModule {}

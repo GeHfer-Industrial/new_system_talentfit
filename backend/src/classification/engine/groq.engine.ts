@@ -3,11 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import Groq from 'groq-sdk';
 import { Classification } from '@prisma/client';
 import {
+  CandidateEducation,
+  CandidateExperience,
+  CandidateLanguage,
   ClassificationConfig,
   ClassificationResult,
   IClassificationEngine,
   JobWithKeywords,
 } from './keyword.engine';
+
+const EDUCATION_LEVELS = ['ENSINO_MEDIO', 'TECNICO', 'SUPERIOR', 'POS_GRADUACAO', 'MESTRADO', 'DOUTORADO'];
+const EDUCATION_STATUSES = ['EM_ANDAMENTO', 'CONCLUIDO', 'TRANCADO'];
+const LANGUAGE_LEVELS = ['BASICO', 'INTERMEDIARIO', 'AVANCADO', 'FLUENTE'];
 
 const fallback = (): ClassificationResult => ({
   jobId: null,
@@ -15,9 +22,54 @@ const fallback = (): ClassificationResult => ({
   classification: Classification.TALENT_POOL,
   matchedKeywords: [],
   candidateSkills: [],
+  candidateExperiences: [],
+  candidateEducations: [],
+  candidateLanguages: [],
   aiSummary: null,
   engine: 'groq',
 });
+
+function sanitizeMonth(value: unknown): string | undefined {
+  return typeof value === 'string' && /^\d{4}-\d{2}$/.test(value) ? value : undefined;
+}
+
+function sanitizeExperiences(value: unknown): CandidateExperience[] {
+  if (!Array.isArray(value)) return [];
+  return (value as any[])
+    .filter((item) => item && typeof item === 'object' && typeof item.company === 'string' && typeof item.role === 'string')
+    .map((item) => ({
+      company: item.company,
+      role: item.role,
+      startDate: sanitizeMonth(item.startDate) ?? '',
+      endDate: sanitizeMonth(item.endDate),
+      current: !!item.current,
+      description: typeof item.description === 'string' ? item.description : undefined,
+    }));
+}
+
+function sanitizeEducations(value: unknown): CandidateEducation[] {
+  if (!Array.isArray(value)) return [];
+  return (value as any[])
+    .filter((item) => item && typeof item === 'object' && typeof item.institution === 'string' && typeof item.course === 'string')
+    .map((item) => ({
+      institution: item.institution,
+      course: item.course,
+      level: EDUCATION_LEVELS.includes(item.level) ? item.level : 'SUPERIOR',
+      status: EDUCATION_STATUSES.includes(item.status) ? item.status : 'CONCLUIDO',
+      startDate: sanitizeMonth(item.startDate),
+      endDate: sanitizeMonth(item.endDate),
+    }));
+}
+
+function sanitizeLanguages(value: unknown): CandidateLanguage[] {
+  if (!Array.isArray(value)) return [];
+  return (value as any[])
+    .filter((item) => item && typeof item === 'object' && typeof item.language === 'string' && item.language.trim())
+    .map((item) => ({
+      language: item.language,
+      level: LANGUAGE_LEVELS.includes(item.level) ? item.level : 'INTERMEDIARIO',
+    }));
+}
 
 @Injectable()
 export class GroqClassificationEngine implements IClassificationEngine {
@@ -67,6 +119,13 @@ INSTRUÇÕES:
 6. Escreva um aiSummary em português (máx. 2 frases):
    - Se COMPATIBLE/PARTIAL: por que o candidato é compatível
    - Se TALENT_POOL: quais habilidades ele tem, o que falta e quais tipos de vaga poderia preencher futuramente
+7. Extraia também, se estiverem presentes no texto, as experiências profissionais, formação acadêmica e idiomas do candidato:
+   - Datas sempre no formato "AAAA-MM" (ano-mês). Se não souber o mês/ano exato, omita o campo.
+   - "level" de formação deve ser um destes valores exatos: ${EDUCATION_LEVELS.join(', ')}
+   - "status" de formação deve ser um destes valores exatos: ${EDUCATION_STATUSES.join(', ')}
+   - "level" de idioma deve ser um destes valores exatos: ${LANGUAGE_LEVELS.join(', ')}
+   - Se não houver informação suficiente para alguma seção, retorne um array vazio para ela — não invente dados.
+   - IMPORTANTE: o campo "description" de cada experiência deve conter o texto COMPLETO das atividades/responsabilidades, exatamente como está escrito no currículo — inclua TODOS os tópicos/bullets daquela experiência, um por linha (separados por "\\n"). NÃO resuma, corte ou reescreva esse texto. Esse campo é diferente do "aiSummary": aqui é o conteúdo literal do currículo, o resumo de triagem fica só no "aiSummary".
 
 Responda APENAS com JSON válido, sem markdown, sem explicações:
 {
@@ -75,6 +134,9 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
   "classification": "COMPATIBLE | PARTIAL | TALENT_POOL",
   "matchedKeywords": ["keyword1"],
   "candidateSkills": ["skill1", "skill2", "skill3"],
+  "candidateExperiences": [{"company": "", "role": "", "startDate": "AAAA-MM", "endDate": "AAAA-MM ou omitir", "current": false, "description": ""}],
+  "candidateEducations": [{"institution": "", "course": "", "level": "SUPERIOR", "status": "CONCLUIDO", "startDate": "AAAA-MM", "endDate": "AAAA-MM"}],
+  "candidateLanguages": [{"language": "", "level": "INTERMEDIARIO"}],
   "aiSummary": "Resumo em português de até 2 frases."
 }`;
 
@@ -82,7 +144,7 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
       const completion = await this.client.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 600,
+        max_tokens: 3000,
         temperature: 0.1,
       });
 
@@ -107,6 +169,9 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
         classification,
         matchedKeywords: Array.isArray(parsed.matchedKeywords) ? parsed.matchedKeywords : [],
         candidateSkills: Array.isArray(parsed.candidateSkills) ? parsed.candidateSkills : [],
+        candidateExperiences: sanitizeExperiences(parsed.candidateExperiences),
+        candidateEducations: sanitizeEducations(parsed.candidateEducations),
+        candidateLanguages: sanitizeLanguages(parsed.candidateLanguages),
         aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary : null,
         engine: 'groq',
       };

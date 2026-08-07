@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TalentPoolService } from '../talent-pool/talent-pool.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { JobStatus } from '@prisma/client';
@@ -11,11 +12,16 @@ interface JobFilters {
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(JobsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly talentPoolService: TalentPoolService,
+  ) {}
 
   async create(dto: CreateJobDto) {
     const { keywords, ...jobData } = dto;
-    return this.prisma.$transaction(async (tx) => {
+    const job = await this.prisma.$transaction(async (tx) => {
       const job = await tx.job.create({ data: jobData });
       if (keywords?.length) {
         await tx.jobKeyword.createMany({
@@ -26,6 +32,25 @@ export class JobsService {
         where: { id: job.id },
         include: { keywords: true },
       });
+    });
+
+    // Escaneia o banco de talentos em segundo plano — uma vaga nova pode ser compatível
+    // com candidatos que antes não tinham vaga nenhuma.
+    this.talentPoolService.reEvaluate().catch((err) => {
+      this.logger.error(
+        'Erro ao rescanear banco de talentos após criar vaga',
+        err instanceof Error ? err.message : err,
+      );
+    });
+
+    return job;
+  }
+
+  async findAllPublic() {
+    return this.prisma.job.findMany({
+      where: { status: JobStatus.OPEN },
+      select: { id: true, title: true, department: true },
+      orderBy: { title: 'asc' },
     });
   }
 

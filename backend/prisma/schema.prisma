@@ -23,15 +23,16 @@ enum Role {
 }
 
 model Job {
-  id          String       @id @default(uuid())
-  title       String
-  department  String
-  description String
-  status      JobStatus    @default(OPEN)
-  keywords    JobKeyword[]
-  resumes     Resume[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id               String          @id @default(uuid())
+  title            String
+  department       String
+  description      String
+  status           JobStatus       @default(OPEN)
+  keywords         JobKeyword[]
+  resumes          Resume[]
+  desiredByResumes DigitalResume[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }
 
 enum JobStatus {
@@ -79,6 +80,7 @@ model CandidatePreRegistration {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   behavioralResult BehavioralResult?
+  digitalResume    DigitalResume?
 }
 
 model BehavioralResult {
@@ -109,12 +111,83 @@ model BehavioralAnswer {
   categoryCode  String
 }
 
+model DigitalResume {
+  id                String                   @id @default(uuid())
+  preRegistrationId String                   @unique
+  preRegistration   CandidatePreRegistration @relation(fields: [preRegistrationId], references: [id], onDelete: Cascade)
+  skills            String[]
+  desiredJobId      String?
+  desiredJob        Job?                     @relation(fields: [desiredJobId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  experiences       WorkExperience[]
+  educations        Education[]
+  languages         LanguageSkill[]
+}
+
+model WorkExperience {
+  id              String        @id @default(uuid())
+  digitalResumeId String
+  digitalResume   DigitalResume @relation(fields: [digitalResumeId], references: [id], onDelete: Cascade)
+  company         String
+  role            String
+  startDate       DateTime
+  endDate         DateTime?
+  current         Boolean       @default(false)
+  description     String?       @db.Text
+}
+
+model Education {
+  id              String          @id @default(uuid())
+  digitalResumeId String
+  digitalResume   DigitalResume   @relation(fields: [digitalResumeId], references: [id], onDelete: Cascade)
+  institution     String
+  course          String
+  level           EducationLevel
+  status          EducationStatus
+  startDate       DateTime?
+  endDate         DateTime?
+}
+
+model LanguageSkill {
+  id              String        @id @default(uuid())
+  digitalResumeId String
+  digitalResume   DigitalResume @relation(fields: [digitalResumeId], references: [id], onDelete: Cascade)
+  language        String
+  level           LanguageLevel
+}
+
+enum EducationLevel {
+  ENSINO_MEDIO
+  TECNICO
+  SUPERIOR
+  POS_GRADUACAO
+  MESTRADO
+  DOUTORADO
+}
+
+enum EducationStatus {
+  EM_ANDAMENTO
+  CONCLUIDO
+  TRANCADO
+}
+
+enum LanguageLevel {
+  BASICO
+  INTERMEDIARIO
+  AVANCADO
+  FLUENTE
+}
+
 model Resume {
   id                   String         @id @default(uuid())
   candidateId          String
   jobId                String?
   extractedText        String         @db.Text
   extractedSkills      String[]
+  extractedExperiences Json?
+  extractedEducations  Json?
+  extractedLanguages   Json?
   score                Float          @default(0)
   classification       Classification
   classificationEngine String         @default("keyword")
