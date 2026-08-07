@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JobStatus } from '@prisma/client';
+import { Public } from '../common/decorators/public.decorator';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -36,6 +37,13 @@ export class JobsController {
     @Query('department') department?: string,
   ) {
     return this.jobsService.findAll({ status, department });
+  }
+
+  @Get('public')
+  @Public()
+  @ApiOperation({ summary: 'Lista vagas abertas (uso público, ex: formulário de currículo digital)' })
+  findAllPublic() {
+    return this.jobsService.findAllPublic();
   }
 
   @Get(':id')

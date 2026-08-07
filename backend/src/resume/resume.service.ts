@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
-import { Classification } from '@prisma/client';
+import { Classification, Prisma } from '@prisma/client';
 
 interface ResumeFilters {
   classification?: Classification;
@@ -67,6 +67,9 @@ export class ResumeService {
         jobId: result.jobId ?? undefined,
         extractedText,
         extractedSkills: result.candidateSkills.length ? result.candidateSkills : result.matchedKeywords,
+        extractedExperiences: result.candidateExperiences as unknown as Prisma.InputJsonValue,
+        extractedEducations: result.candidateEducations as unknown as Prisma.InputJsonValue,
+        extractedLanguages: result.candidateLanguages as unknown as Prisma.InputJsonValue,
         score: result.score,
         classification: result.classification,
         classificationEngine: result.engine,
@@ -75,14 +78,6 @@ export class ResumeService {
       },
       include: { candidate: true, job: true },
     });
-
-    if (result.classification === Classification.TALENT_POOL) {
-      await this.prisma.talentPool.upsert({
-        where: { candidateId: candidate.id },
-        update: {},
-        create: { candidateId: candidate.id },
-      });
-    }
 
     return resume;
   }
@@ -104,9 +99,7 @@ export class ResumeService {
   async findAll(filters?: ResumeFilters) {
     return this.prisma.resume.findMany({
       where: {
-        classification: filters?.classification
-          ? filters.classification
-          : { not: Classification.TALENT_POOL },
+        ...(filters?.classification && { classification: filters.classification }),
         ...(filters?.jobId && { jobId: filters.jobId }),
       },
       include: {
@@ -123,7 +116,19 @@ export class ResumeService {
       include: {
         candidate: {
           include: {
-            preRegistration: { include: { behavioralResult: { include: { answers: true } } } },
+            preRegistration: {
+              include: {
+                behavioralResult: { include: { answers: true } },
+                digitalResume: {
+                  include: {
+                    experiences: true,
+                    educations: true,
+                    languages: true,
+                    desiredJob: { select: { id: true, title: true, department: true } },
+                  },
+                },
+              },
+            },
           },
         },
         job: true,

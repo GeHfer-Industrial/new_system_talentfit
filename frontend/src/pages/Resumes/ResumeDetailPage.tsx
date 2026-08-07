@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { PageLoader } from '../../components/ui/Spinner'
 import { BehavioralProfileCard } from '../../components/features/candidates/BehavioralProfileCard'
+import { DigitalResumeCard } from '../../components/features/candidates/DigitalResumeCard'
 
 const ENGINE_LABELS: Record<string, { label: string; color: string }> = {
   groq: { label: 'Avaliado por IA (Groq)', color: 'bg-orange-50 text-orange-700 border border-orange-200' },
@@ -99,7 +100,7 @@ export default function ResumeDetailPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <Link to="/resumes" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <ArrowLeft className="h-4 w-4" /> Voltar para currículos
         </Link>
@@ -109,191 +110,212 @@ export default function ResumeDetailPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
+      <div
+        className={`grid grid-cols-1 ${preRegistration ? 'lg:grid-cols-[1fr_380px]' : ''} gap-6 items-start print:grid-cols-1`}
+      >
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="sm:col-span-2">
-              <h2 className="font-semibold text-slate-900 text-lg mb-3">{resume.candidate.name}</h2>
-              <div className="space-y-1 text-sm text-slate-600">
-                {resume.candidate.email && <p>📧 {resume.candidate.email}</p>}
-                {resume.candidate.phone && <p>📞 {resume.candidate.phone}</p>}
-                {resume.job && <p>💼 {resume.job.title} — {resume.job.department}</p>}
-              </div>
-            </Card>
-
-            <Card className="flex flex-col items-center justify-center gap-2">
-              <ScoreRing score={resume.score} />
-              <ClassificationBadge classification={resume.classification} />
-              <EngineBadge engine={resume.classificationEngine} />
-            </Card>
-          </div>
-
-          {resume.aiSummary && (
-            <Card>
-              <div className="flex items-start gap-3">
-                <span className="text-xl mt-0.5">🤖</span>
-                <div>
-                  <h3 className="font-semibold text-slate-900 mb-1 text-sm">Análise da IA</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{resume.aiSummary}</p>
+          <Card className="print:hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <div className="flex-1">
+                <h2 className="font-semibold text-slate-900 text-lg mb-2">{resume.candidate.name}</h2>
+                <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600">
+                  {resume.candidate.email && <span>📧 {resume.candidate.email}</span>}
+                  {resume.candidate.phone && <span>📞 {resume.candidate.phone}</span>}
+                  {resume.job && <span>💼 {resume.job.title} — {resume.job.department}</span>}
                 </div>
               </div>
-            </Card>
-          )}
 
-          {resume.extractedSkills.length > 0 && (
-            <Card>
-              <h3 className="font-semibold text-slate-900 mb-3">
-                {resume.classification === 'TALENT_POOL' ? 'Competências do candidato' : 'Keywords encontradas'}
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {resume.extractedSkills.map((skill) => (
-                  <span key={skill} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                    {skill}
-                  </span>
-                ))}
+              <div className="flex items-center gap-4 sm:border-l sm:border-slate-100 sm:pl-6">
+                <ScoreRing score={resume.score} />
+                <div className="flex flex-col gap-1.5">
+                  <ClassificationBadge classification={resume.classification} />
+                  <EngineBadge engine={resume.classificationEngine} />
+                </div>
               </div>
-            </Card>
-          )}
+            </div>
 
-          <Card>
-            <button
-              onClick={() => setShowText(!showText)}
-              className="flex items-center justify-between w-full text-left"
-            >
-              <h3 className="font-semibold text-slate-900">Texto extraído do currículo</h3>
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showText ? 'rotate-180' : ''}`} />
-            </button>
-            {showText && (
-              <pre className="mt-4 text-xs text-slate-600 bg-slate-50 rounded-lg p-4 overflow-auto max-h-64 whitespace-pre-wrap">
-                {resume.extractedText}
-              </pre>
-            )}
+            <div className="flex flex-wrap gap-3 mt-5 pt-5 border-t border-slate-100">
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={updateClassification.isPending && pendingAction === 'COMPATIBLE'}
+                disabled={updateClassification.isPending || deleteResume.isPending}
+                onClick={() => classify('COMPATIBLE', resume.jobId ?? undefined)}
+              >
+                ✅ Aprovar
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                loading={updateClassification.isPending && pendingAction === 'REJEITAR'}
+                disabled={updateClassification.isPending || deleteResume.isPending}
+                onClick={() => classify('TALENT_POOL', undefined, 'REJEITAR')}
+              >
+                ❌ Rejeitar
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={updateClassification.isPending && pendingAction === 'TALENT_POOL'}
+                disabled={updateClassification.isPending || deleteResume.isPending}
+                onClick={() => classify('TALENT_POOL')}
+              >
+                ⭐ Banco de Talentos
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={updateClassification.isPending || deleteResume.isPending}
+                onClick={() => setChangeJobOpen(true)}
+              >
+                🔁 Alterar vaga
+              </Button>
+            </div>
           </Card>
 
-          {resume.candidate.resumeFile && (
-            <a
-              href={`${import.meta.env.VITE_API_URL}/files/${resume.candidate.resumeFile}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
-            >
-              <Button variant="secondary" size="sm">
-                <Download className="h-4 w-4" />
-                Baixar currículo original
-              </Button>
-            </a>
-          )}
+          <div className="columns-1 md:columns-2 gap-6 print:columns-none">
+            {(resume.aiSummary || resume.extractedSkills.length > 0) && (
+              <Card className="break-inside-avoid mb-6 print:hidden">
+                {resume.aiSummary && (
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl mt-0.5">🤖</span>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 mb-1 text-sm">Análise da IA</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{resume.aiSummary}</p>
+                    </div>
+                  </div>
+                )}
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={updateClassification.isPending && pendingAction === 'COMPATIBLE'}
-              disabled={updateClassification.isPending || deleteResume.isPending}
-              onClick={() => classify('COMPATIBLE', resume.jobId ?? undefined)}
-            >
-              ✅ Aprovar
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={updateClassification.isPending && pendingAction === 'REJEITAR'}
-              disabled={updateClassification.isPending || deleteResume.isPending}
-              onClick={() => classify('TALENT_POOL', undefined, 'REJEITAR')}
-            >
-              ❌ Rejeitar
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={updateClassification.isPending && pendingAction === 'TALENT_POOL'}
-              disabled={updateClassification.isPending || deleteResume.isPending}
-              onClick={() => classify('TALENT_POOL')}
-            >
-              ⭐ Banco de Talentos
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={updateClassification.isPending || deleteResume.isPending}
-              onClick={() => setChangeJobOpen(true)}
-            >
-              🔁 Alterar vaga
-            </Button>
+                {resume.extractedSkills.length > 0 && (
+                  <div className={resume.aiSummary ? 'mt-4 pt-4 border-t border-slate-100' : ''}>
+                    <h3 className="font-semibold text-slate-900 mb-3 text-sm">
+                      {resume.classification === 'TALENT_POOL' ? 'Competências do candidato' : 'Keywords encontradas'}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {resume.extractedSkills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            <Card className="break-inside-avoid mb-6 print:hidden">
+              <h3 className="font-semibold text-slate-900 mb-3">Pré-cadastro</h3>
+              {preRegistration ? (
+                <dl className="space-y-3 text-sm">
+                  <div>
+                    <dt className="text-xs text-slate-400 uppercase tracking-wide">Naturalidade</dt>
+                    <dd className="text-slate-700">{preRegistration.birthPlace}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-400 uppercase tracking-wide">Data de nascimento</dt>
+                    <dd className="text-slate-700">
+                      {new Date(preRegistration.birthDate).toLocaleDateString('pt-BR')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-400 uppercase tracking-wide">RG</dt>
+                    <dd className="text-slate-700">{preRegistration.rg}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-400 uppercase tracking-wide">CPF</dt>
+                    <dd className="text-slate-700">{preRegistration.cpf}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-400 uppercase tracking-wide">Nome do pai</dt>
+                    <dd className="text-slate-700">{preRegistration.fatherName}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-400 uppercase tracking-wide">Nome da mãe</dt>
+                    <dd className="text-slate-700">{preRegistration.motherName}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Pré-cadastro ainda não enviado. Envie o link{' '}
+                  <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">/pre-cadastro</span> para o
+                  candidato preencher.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+                <a href={buildMailtoHref(resume.candidate.email, buildPreRegistrationMessage(resume.candidate.id))}>
+                  <Button variant="secondary" size="sm">
+                    <Mail className="h-4 w-4" />
+                    Enviar por e-mail
+                  </Button>
+                </a>
+                <a
+                  href={buildWhatsappHref(resume.candidate.phone, buildPreRegistrationMessage(resume.candidate.id))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="secondary" size="sm">
+                    <MessageCircle className="h-4 w-4" />
+                    Enviar por WhatsApp
+                  </Button>
+                </a>
+              </div>
+            </Card>
+
+            <Card className="break-inside-avoid mb-6 print:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setShowText(!showText)}
+                  className="flex items-center gap-2 flex-1 text-left min-w-0"
+                >
+                  <h3 className="font-semibold text-slate-900 truncate">Texto extraído do currículo</h3>
+                  <ChevronDown
+                    className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${showText ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {resume.candidate.resumeFile && (
+                  <a
+                    href={`${import.meta.env.VITE_API_URL}/files/${resume.candidate.resumeFile}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="shrink-0"
+                  >
+                    <Button variant="ghost" size="sm">
+                      <Download className="h-4 w-4" />
+                      Baixar original
+                    </Button>
+                  </a>
+                )}
+              </div>
+              {showText && (
+                <pre className="mt-4 text-xs text-slate-600 bg-slate-50 rounded-lg p-4 overflow-auto max-h-64 whitespace-pre-wrap">
+                  {resume.extractedText}
+                </pre>
+              )}
+            </Card>
+
+            {preRegistration?.digitalResume && (
+              <div className="break-inside-avoid mb-6">
+                <DigitalResumeCard resume={preRegistration.digitalResume} />
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-6">
-        <Card>
-          <h3 className="font-semibold text-slate-900 mb-3">Pré-cadastro</h3>
-          {preRegistration ? (
-            <dl className="space-y-3 text-sm">
-              <div>
-                <dt className="text-xs text-slate-400 uppercase tracking-wide">Naturalidade</dt>
-                <dd className="text-slate-700">{preRegistration.birthPlace}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-400 uppercase tracking-wide">Data de nascimento</dt>
-                <dd className="text-slate-700">
-                  {new Date(preRegistration.birthDate).toLocaleDateString('pt-BR')}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-400 uppercase tracking-wide">RG</dt>
-                <dd className="text-slate-700">{preRegistration.rg}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-400 uppercase tracking-wide">CPF</dt>
-                <dd className="text-slate-700">{preRegistration.cpf}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-400 uppercase tracking-wide">Nome do pai</dt>
-                <dd className="text-slate-700">{preRegistration.fatherName}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-400 uppercase tracking-wide">Nome da mãe</dt>
-                <dd className="text-slate-700">{preRegistration.motherName}</dd>
-              </div>
-            </dl>
-          ) : (
-            <p className="text-sm text-slate-500">
-              Pré-cadastro ainda não enviado. Envie o link{' '}
-              <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">/pre-cadastro</span> para o
-              candidato preencher.
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-            <a href={buildMailtoHref(resume.candidate.email, buildPreRegistrationMessage(resume.candidate.id))}>
-              <Button variant="secondary" size="sm">
-                <Mail className="h-4 w-4" />
-                Enviar por e-mail
-              </Button>
-            </a>
-            <a
-              href={buildWhatsappHref(resume.candidate.phone, buildPreRegistrationMessage(resume.candidate.id))}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="secondary" size="sm">
-                <MessageCircle className="h-4 w-4" />
-                Enviar por WhatsApp
-              </Button>
-            </a>
-          </div>
-        </Card>
-
         {preRegistration && (
           preRegistration.behavioralResult ? (
-            <BehavioralProfileCard result={preRegistration.behavioralResult} />
+            <BehavioralProfileCard result={preRegistration.behavioralResult} candidateName={resume.candidate.name} />
           ) : (
-            <Card>
+            <Card className="print:hidden">
               <h3 className="font-semibold text-slate-900 mb-2">Perfil Comportamental</h3>
               <p className="text-sm text-slate-500">Questionário de perfil comportamental ainda não concluído.</p>
             </Card>
           )
         )}
-        </div>
       </div>
 
       <ConfirmModal

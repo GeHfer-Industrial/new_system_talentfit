@@ -18,6 +18,9 @@ export default function ResumesPage() {
   const [classification, setClassification] = useState<Classification | ''>('')
   const [jobId, setJobId] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const uploadResume = useUploadResume()
@@ -41,6 +44,37 @@ export default function ResumesPage() {
     await deleteResume.mutateAsync(confirmDelete)
     toast.success('Currículo excluído')
     setConfirmDelete(null)
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = (ids: string[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = ids.length > 0 && ids.every((id) => prev.has(id))
+      return allSelected ? new Set() : new Set(ids)
+    })
+  }
+
+  const doBulkDelete = async () => {
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedIds)
+      await Promise.all(ids.map((id) => deleteResume.mutateAsync(id)))
+      toast.success(`${ids.length} currículo${ids.length > 1 ? 's' : ''} excluído${ids.length > 1 ? 's' : ''}`)
+      setSelectedIds(new Set())
+      setConfirmBulkDelete(false)
+    } catch {
+      toast.error('Erro ao excluir alguns currículos')
+    } finally {
+      setBulkDeleting(false)
+    }
   }
 
   const { data: resumes, isLoading, isFetching } = useResumes(
@@ -108,6 +142,7 @@ export default function ResumesPage() {
             <option value="">Todas as classificações</option>
             <option value="COMPATIBLE">Compatível</option>
             <option value="PARTIAL">Parcial</option>
+            <option value="TALENT_POOL">Sem vaga compatível</option>
           </select>
           <select
             value={jobId}
@@ -119,6 +154,12 @@ export default function ResumesPage() {
           </select>
         </div>
         <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button variant="danger" onClick={() => setConfirmBulkDelete(true)}>
+              <Trash2 className="h-4 w-4" />
+              Excluir selecionados ({selectedIds.size})
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => syncEmails.mutate()}
@@ -154,6 +195,15 @@ export default function ResumesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500 uppercase tracking-wide border-b border-slate-100">
+                  <th className="px-6 py-3 font-medium w-10">
+                    <input
+                      type="checkbox"
+                      checked={resumes.length > 0 && resumes.every((r) => selectedIds.has(r.id))}
+                      onChange={() => toggleSelectAll(resumes.map((r) => r.id))}
+                      className="rounded border-slate-300"
+                      aria-label="Selecionar todos"
+                    />
+                  </th>
                   <th className="px-6 py-3 font-medium">Candidato</th>
                   <th className="px-6 py-3 font-medium">Vaga</th>
                   <th className="px-6 py-3 font-medium">Score</th>
@@ -164,7 +214,16 @@ export default function ResumesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {resumes.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50">
+                  <tr key={r.id} className={`hover:bg-slate-50 ${selectedIds.has(r.id) ? 'bg-primary/5' : ''}`}>
+                    <td className="px-6 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(r.id)}
+                        onChange={() => toggleSelected(r.id)}
+                        className="rounded border-slate-300"
+                        aria-label={`Selecionar ${r.candidate.name}`}
+                      />
+                    </td>
                     <td className="px-6 py-3 font-medium text-slate-900">{r.candidate.name}</td>
                     <td className="px-6 py-3 text-slate-600">{r.job?.title ?? <span className="text-slate-400">—</span>}</td>
                     <td className="px-6 py-3"><ScoreBadge score={r.score} /></td>
@@ -211,6 +270,16 @@ export default function ResumesPage() {
         loading={deleteResume.isPending}
         title="Excluir currículo"
         description="Deseja excluir este currículo? O arquivo também será removido. Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+      />
+
+      <ConfirmModal
+        open={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        onConfirm={doBulkDelete}
+        loading={bulkDeleting}
+        title="Excluir currículos selecionados"
+        description={`Deseja excluir ${selectedIds.size} currículo${selectedIds.size > 1 ? 's' : ''}? Os arquivos também serão removidos. Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
       />
     </div>

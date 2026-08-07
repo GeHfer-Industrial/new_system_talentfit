@@ -1,7 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { EducationLevel, EducationStatus, LanguageLevel } from './useDigitalResume'
 
 export type Classification = 'COMPATIBLE' | 'PARTIAL' | 'TALENT_POOL'
+
+export interface WorkExperience {
+  id: string
+  company: string
+  role: string
+  startDate: string
+  endDate: string | null
+  current: boolean
+  description: string | null
+}
+
+export interface Education {
+  id: string
+  institution: string
+  course: string
+  level: EducationLevel
+  status: EducationStatus
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface LanguageSkill {
+  id: string
+  language: string
+  level: LanguageLevel
+}
+
+export interface DigitalResume {
+  id: string
+  skills: string[]
+  experiences: WorkExperience[]
+  educations: Education[]
+  languages: LanguageSkill[]
+  desiredJob: { id: string; title: string; department: string } | null
+}
 
 export interface BehavioralAnswer {
   id: string
@@ -38,6 +74,7 @@ export interface PreRegistration {
   fatherName: string
   motherName: string
   behavioralResult: BehavioralResult | null
+  digitalResume: DigitalResume | null
 }
 
 export interface Resume {

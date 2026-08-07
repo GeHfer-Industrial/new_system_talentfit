@@ -27,11 +27,18 @@ const REGION_ANGLE: Record<string, number> = {
   Esquerdo: 180,
 }
 
+const REGION_FORMULA: Record<string, string> = {
+  Anterior: 'O+I',
+  Direito: 'I+C',
+  Posterior: 'C+A',
+  Esquerdo: 'O+A',
+}
+
 const CORNER_LABELS: { text: string; angle: number; anchor: 'start' | 'end' }[] = [
-  { text: 'Organizador', angle: 225, anchor: 'end' },
-  { text: 'Idealizador', angle: 315, anchor: 'start' },
-  { text: 'Comunicador', angle: 45, anchor: 'start' },
-  { text: 'Ativador', angle: 135, anchor: 'end' },
+  { text: 'ORGANIZADOR', angle: 225, anchor: 'end' },
+  { text: 'IDEALIZADOR', angle: 315, anchor: 'start' },
+  { text: 'COMUNICADOR', angle: 45, anchor: 'start' },
+  { text: 'ATIVADOR/AÇÃO', angle: 135, anchor: 'end' },
 ]
 
 interface BrainQuadrantDiagramProps {
@@ -73,15 +80,18 @@ export function BrainQuadrantDiagram({ regions }: BrainQuadrantDiagramProps) {
           <g key={p.region}>
             <text
               x={labelPos.x}
-              y={labelPos.y - 3}
+              y={labelPos.y - 9}
               textAnchor={anchor}
               className={`text-[9px] font-semibold ${p.region === dominant.region ? 'fill-slate-800' : 'fill-slate-500'}`}
             >
               {p.region}
             </text>
+            <text x={labelPos.x} y={labelPos.y + 1} textAnchor={anchor} className="fill-slate-400 text-[7px]">
+              ({REGION_FORMULA[p.region]})
+            </text>
             <text
               x={labelPos.x}
-              y={labelPos.y + 10}
+              y={labelPos.y + 13}
               textAnchor={anchor}
               className={`text-[11px] font-bold ${p.region === dominant.region ? 'fill-slate-800' : 'fill-slate-500'}`}
             >
@@ -94,11 +104,20 @@ export function BrainQuadrantDiagram({ regions }: BrainQuadrantDiagramProps) {
       {CORNER_LABELS.map((c) => {
         const pos = polar(c.angle, R_CORNER_LABEL)
         return (
-          <text key={c.text} x={pos.x} y={pos.y} textAnchor={c.anchor} className="fill-slate-500 text-[9px] font-medium">
+          <text key={c.text} x={pos.x} y={pos.y} textAnchor={c.anchor} className="fill-slate-500 text-[8px] font-bold">
             {c.text}
           </text>
         )
       })}
+
+      <text
+        x={CX + 55}
+        y={CY + 45}
+        textAnchor="middle"
+        className="fill-slate-400 text-[8px] italic"
+      >
+        Área de Plotagem
+      </text>
     </svg>
   )
 }

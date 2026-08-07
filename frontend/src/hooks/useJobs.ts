@@ -18,6 +18,12 @@ export interface Job {
   createdAt: string
 }
 
+export interface PublicJob {
+  id: string
+  title: string
+  department: string
+}
+
 export interface CreateJobDto {
   title: string
   department: string
@@ -32,6 +38,14 @@ export function useJobs(filters?: { status?: string; department?: string }) {
     queryKey: ['jobs', filters],
     queryFn: () => api.get<{ data: Job[] }>('/jobs', { params: filters }).then(unwrap),
     staleTime: 2 * 60 * 1000,
+  })
+}
+
+export function usePublicJobs() {
+  return useQuery({
+    queryKey: ['jobs', 'public'],
+    queryFn: () => api.get<{ data: PublicJob[] }>('/jobs/public').then(unwrap),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
