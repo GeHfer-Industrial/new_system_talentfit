@@ -54,6 +54,14 @@ export class JobsService {
     });
   }
 
+  async findAllPublic() {
+    return this.prisma.job.findMany({
+      where: { status: JobStatus.OPEN },
+      select: { id: true, title: true, department: true },
+      orderBy: { title: 'asc' },
+    });
+  }
+
   async findAll(filters?: JobFilters) {
     return this.prisma.job.findMany({
       where: {

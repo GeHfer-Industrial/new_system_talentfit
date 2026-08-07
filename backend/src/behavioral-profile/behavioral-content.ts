@@ -8,7 +8,6 @@ export interface ProfileContent {
   brainRole: string
   tagline: string
   color: string
-  mainCharacteristics: string
   behavioralTraits: string
   strengths: string
   improvementPoints: string
@@ -46,12 +45,11 @@ export const PROFILES: Record<CategoryCode, ProfileContent> = {
     brainRole: 'Ativador (Ação)',
     tagline: 'Fazer rápido (Atitude/ação)',
     color: '#E4572E',
-    mainCharacteristics: 'Objetivo, decidido, gosta de desafios e de agir rápido.',
-    behavioralTraits: 'Direto, competitivo, impaciente com burocracia, foca em resultado.',
-    strengths: 'Senso de urgência, coragem para decidir, foco em metas.',
-    improvementPoints: 'Pode ser visto como impositivo; precisa ouvir mais antes de agir; cuidar dos detalhes.',
-    motivations: 'Metas desafiadoras, autonomia, resultados visíveis.',
-    values: 'Conquista, eficiência, liberdade para agir.',
+    behavioralTraits: 'Senso de urgência, iniciativa, prático, impulsivo, vencer desafios, aqui e agora, auto suficiente, não delegar.',
+    strengths: 'Ação, Fazer que ocorra, parar com a burocracia, motivação.',
+    improvementPoints: 'Socialmente um desastre, faz da forma mais fácil, relacionamento complicado. Precisa melhorar a paciência, atenção às pessoas, humildade, consideração, trabalhar coletivamente, Ouvir mais.',
+    motivations: 'Liberdade para agir individualmente, controle das proprias atividades, resolver os problemas do seu jeito, competição, variedade de atividades, não ter que repetir tarefas.',
+    values: 'Resultado',
   },
   C: {
     code: 'C',
@@ -60,26 +58,24 @@ export const PROFILES: Record<CategoryCode, ProfileContent> = {
     brainRole: 'Comunicador',
     tagline: 'Fazer junto (Comunicação)',
     color: '#F3A712',
-    mainCharacteristics: 'Sociável, entusiasmado, gosta de gente e de trabalhar em equipe.',
-    behavioralTraits: 'Expressivo, otimista, persuasivo, sensível ao clima do grupo.',
-    strengths: 'Engaja pessoas, constrói relações, comunica com facilidade.',
-    improvementPoints: 'Pode perder foco em detalhes; evita conflito quando deveria enfrentar; precisa de mais disciplina com prazos.',
-    motivations: 'Reconhecimento social, boas relações, ambiente positivo.',
-    values: 'Conexão, colaboração, otimismo.',
+    behavioralTraits: 'Sensível, relacionamentos, time, tradicional, contribuição, busca harmonia, delega autoridade.',
+    strengths: 'Comunicação, mantem a harmonia, desenvolve e mantem a cultura, comunicação aberta.',
+    improvementPoints: 'Esconder conflitos, felicidade acima dos resultados, manipulação através de sentimentos. Abordagem mais direta, controle de tempo, controle emocional, mais foco, prazos realistas, trabalhar mais a razão.',
+    motivations: 'Segurança, aceitação social, construir o consenso, reconhecimento da equipe, supervisão compreensiva, ambiente harmonico, trabalho em grupo.',
+    values: 'Felicidade e igualdade (pensa nos outros)',
   },
   A: {
     code: 'A',
     name: 'Analista',
     animalName: 'Lobo',
     brainRole: 'Organizador',
-    tagline: 'Fazer certo (Análise)',
+    tagline: 'Fazer certo (Organização)',
     color: '#2E86AB',
-    mainCharacteristics: 'Detalhista, organizado, gosta de dados e de planejamento.',
-    behavioralTraits: 'Cauteloso, metódico, exigente com qualidade, prefere previsibilidade.',
-    strengths: 'Rigor técnico, planejamento, atenção a riscos e detalhes.',
-    improvementPoints: 'Pode demorar para decidir; resiste a mudanças rápidas; precisa comunicar mais o raciocínio.',
-    motivations: 'Qualidade, ordem, segurança nas decisões.',
-    values: 'Precisão, consistência, responsabilidade.',
+    behavioralTraits: 'Detalhista, organizado, estrategista, busca do conhecimento, pontual, conservador, previsivel.',
+    strengths: 'Organização, passado presente e futuro, consistência, conformidade e qualidade, lealdade e segurança, regras e responsabilidades.',
+    improvementPoints: 'Dificuldade de se adaptar a mudanças, pode impedir o progresso, detalhista, estruturado e demasiadamente sistematizado. Melhorar o entusiasmo, flexibilidade, aceitação de outros estilos comportamentais, método de atalho.',
+    motivations: 'Certeza, compreensão exata das regras, conhecimento especifico, ausência de riscos e erros, ver o produto acabado (começo, meio e fim).',
+    values: 'Ordem e controle',
   },
   V: {
     code: 'V',
@@ -88,12 +84,11 @@ export const PROFILES: Record<CategoryCode, ProfileContent> = {
     brainRole: 'Idealizador',
     tagline: 'Fazer diferente (Idealização)',
     color: '#6A4C93',
-    mainCharacteristics: 'Criativo, curioso, gosta de ideias novas e de mudança.',
-    behavioralTraits: 'Intuitivo, gosta de inovar, se entedia com rotina, pensa no futuro.',
-    strengths: 'Criatividade, visão estratégica, provoca inovação.',
-    improvementPoints: 'Pode perder o foco no presente; nem sempre detalha a execução; precisa de mais método.',
-    motivations: 'Novidade, liberdade para criar, impacto de longo prazo.',
-    values: 'Inovação, autonomia intelectual, visão de futuro.',
+    behavioralTraits: 'Criativo, intuitivo, foco no futuro, distraído, curioso, informal e flexível.',
+    strengths: 'Idealização, Provoca mudanças, antecipa o futuro, criatividade.',
+    improvementPoints: 'Falta de atenção no presente, impaciência e rebeldia, defender o novo pelo novo, trabalho em equipe, verbalização.',
+    motivations: 'Liberdade de expressão, Ausência de controle rígido, oportunidade para delegar.',
+    values: 'Criatividade e liberdade (inspirar idéias)',
   },
 }
 

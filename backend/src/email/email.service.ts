@@ -101,6 +101,8 @@ export class EmailService {
 
   private buildPreRegistrationEmailHtml(candidateName: string, link: string, logoUrl: string): string {
     const firstName = this.escapeHtml(candidateName?.trim().split(/\s+/)[0] || '');
+  private buildPreRegistrationEmailHtml(candidateName: string, link: string, logoUrl: string): string {
+    const firstName = candidateName?.trim().split(/\s+/)[0] || '';
 
     return `
       <div style="background:#f4f5f7;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
@@ -163,6 +165,7 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
     const link = `${frontendUrl}/pre-cadastro?candidateId=${candidateId}`;
     const logoUrl = `${frontendUrl}/logo_principal_png.png`;
+    const logoUrl = `${frontendUrl}/logo_principal.svg`;
 
     try {
       await this.smtpProvider.sendMail(

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -34,6 +35,7 @@ export class WorkExperienceDto {
   endDate?: string;
 
   @ApiProperty({ required: false, default: false })
+  @ApiProperty({ default: false })
   @IsOptional()
   @IsBoolean()
   current?: boolean;
