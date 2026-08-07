@@ -71,7 +71,9 @@ export function DigitalResumeCard({ resume }: DigitalResumeCardProps) {
                     <p className="text-xs text-slate-400">
                       {formatMonth(exp.startDate)} — {exp.current ? 'Atual' : formatMonth(exp.endDate)}
                     </p>
-                    {exp.description && <p className="text-slate-600 mt-0.5">{exp.description}</p>}
+                    {exp.description && (
+                      <p className="text-slate-600 mt-0.5 whitespace-pre-line">{exp.description}</p>
+                    )}
                   </div>
                 ))}
               </div>
