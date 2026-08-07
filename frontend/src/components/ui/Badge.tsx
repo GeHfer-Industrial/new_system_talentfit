@@ -28,7 +28,7 @@ export function ClassificationBadge({ classification }: { classification: string
   const map: Record<string, { label: string; variant: BadgeVariant }> = {
     COMPATIBLE: { label: 'Compatível', variant: 'success' },
     PARTIAL: { label: 'Parcial', variant: 'warning' },
-    TALENT_POOL: { label: 'Banco de Talentos', variant: 'info' },
+    TALENT_POOL: { label: 'Sem vaga compatível', variant: 'info' },
   }
   const { label, variant } = map[classification] ?? { label: classification, variant: 'neutral' }
   return <Badge variant={variant}>{label}</Badge>

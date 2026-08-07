@@ -17,7 +17,6 @@ export interface ProfileContent {
   brainRole: string
   tagline: string
   color: string
-  mainCharacteristics: string
   behavioralTraits: string
   strengths: string
   improvementPoints: string
