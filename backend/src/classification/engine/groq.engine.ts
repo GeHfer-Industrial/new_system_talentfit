@@ -125,6 +125,7 @@ INSTRUÇÕES:
    - "status" de formação deve ser um destes valores exatos: ${EDUCATION_STATUSES.join(', ')}
    - "level" de idioma deve ser um destes valores exatos: ${LANGUAGE_LEVELS.join(', ')}
    - Se não houver informação suficiente para alguma seção, retorne um array vazio para ela — não invente dados.
+   - IMPORTANTE: o campo "description" de cada experiência deve conter o texto COMPLETO das atividades/responsabilidades, exatamente como está escrito no currículo — inclua TODOS os tópicos/bullets daquela experiência, um por linha (separados por "\\n"). NÃO resuma, corte ou reescreva esse texto. Esse campo é diferente do "aiSummary": aqui é o conteúdo literal do currículo, o resumo de triagem fica só no "aiSummary".
 
 Responda APENAS com JSON válido, sem markdown, sem explicações:
 {
@@ -143,7 +144,7 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
       const completion = await this.client.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1400,
+        max_tokens: 3000,
         temperature: 0.1,
       });
 
