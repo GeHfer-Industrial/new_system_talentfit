@@ -90,10 +90,61 @@ export class EmailService {
     return msg;
   }
 
+  private buildPreRegistrationEmailHtml(candidateName: string, link: string, logoUrl: string): string {
+    const firstName = candidateName?.trim().split(/\s+/)[0] || '';
+
+    return `
+      <div style="background:#f4f5f7;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:#022061;padding:20px 32px;">
+              <img src="${logoUrl}" width="150" alt="GEHFER" style="display:block;border:0;outline:none;text-decoration:none;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:#022061;">Recebemos seu currículo!</h1>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333333;">
+                Olá${firstName ? `, ${firstName}` : ''}! Seu currículo já está em análise pela nossa equipe de Recursos Humanos.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333333;">
+                Para continuar seu processo seletivo, precisamos que você complete as próximas etapas pelo link abaixo:
+              </p>
+              <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.7;color:#333333;">
+                <li>Confirme seus dados pessoais;</li>
+                <li>Revise e complete seu currículo digital (experiência, formação, idiomas e habilidades) — já vamos adiantar algumas informações a partir do currículo enviado;</li>
+                <li>Responda o questionário de perfil comportamental — leva cerca de 15 minutos, sem interrupções.</li>
+              </ul>
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background:#022061;border-radius:6px;">
+                    <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px;">
+                      Completar cadastro
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#667085;">
+                Se o botão não funcionar, copie e cole este link no seu navegador:<br/>
+                <a href="${link}" style="color:#022061;word-break:break-all;">${link}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;background:#f4f5f7;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;">Atenciosamente,<br/>Equipe de Recursos Humanos — GEHFER</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+  }
+
   private async sendPreRegistrationReply(
     config: { smtpHost: string | null; smtpPort: number | null; user: string; password: string },
     to: string,
     candidateId: string,
+    candidateName: string,
   ) {
     if (!config.smtpHost || !config.smtpPort) {
       this.logger.warn('sendAutoReply está ativo, mas o SMTP não está configurado — resposta não enviada');
@@ -102,6 +153,7 @@ export class EmailService {
 
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
     const link = `${frontendUrl}/pre-cadastro?candidateId=${candidateId}`;
+    const logoUrl = `${frontendUrl}/logo_principal.svg`;
 
     try {
       await this.smtpProvider.sendMail(
@@ -109,12 +161,7 @@ export class EmailService {
         {
           to,
           subject: 'Recebemos seu currículo — GEHFER',
-          html: `
-            <p>Olá! Recebemos seu currículo e ele já está em análise pela nossa equipe.</p>
-            <p>Para continuar seu processo seletivo, complete seu pré-cadastro através do link abaixo:</p>
-            <p><a href="${link}">Preencher pré-cadastro</a></p>
-            <p>Atenciosamente,<br/>Equipe de Recursos Humanos — GEHFER</p>
-          `,
+          html: this.buildPreRegistrationEmailHtml(candidateName, link, logoUrl),
         },
       );
     } catch (err) {
@@ -154,6 +201,7 @@ export class EmailService {
       });
 
       let candidateId: string | undefined;
+      let candidateName: string | undefined;
 
       for (const attachment of msg.attachments) {
         try {
@@ -173,6 +221,7 @@ export class EmailService {
             emailRecord.id,
           );
           candidateId ??= resume.candidateId;
+          candidateName ??= resume.candidate.name;
         } catch (err) {
           this.logger.error(`Erro ao processar anexo ${attachment.filename}`, err);
         }
@@ -184,7 +233,7 @@ export class EmailService {
       });
 
       if (candidateId && msg.senderEmail && config.sendAutoReply) {
-        await this.sendPreRegistrationReply(config, msg.senderEmail, candidateId);
+        await this.sendPreRegistrationReply(config, msg.senderEmail, candidateId, candidateName ?? '');
       }
     }
 
