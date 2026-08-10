@@ -5,7 +5,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { resolveUploadDir } from './common/resolve-upload-dir';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -32,8 +32,10 @@ import { DigitalResumeModule } from './digital-resume/digital-resume.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => [
         {
-          rootPath: join(process.cwd(), configService.get<string>('UPLOAD_DIR') ?? 'uploads'),
+          rootPath: resolveUploadDir(configService.get<string>('UPLOAD_DIR')),
           serveRoot: '/files',
+          exclude: ['/files/(.*)'],
+          serveStaticOptions: { index: false, redirect: false },
         },
       ],
       inject: [ConfigService],

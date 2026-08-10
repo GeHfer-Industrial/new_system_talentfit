@@ -11,6 +11,7 @@ import { ClassificationService } from '../classification/classification.service'
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
 import { Classification, Prisma } from '@prisma/client';
+import { resolveUploadDir } from '../common/resolve-upload-dir';
 
 interface ResumeFilters {
   classification?: Classification;
@@ -188,8 +189,7 @@ export class ResumeService {
   }
 
   getUploadDir(): string {
-    const configured = this.configService.get<string>('UPLOAD_DIR');
-    const dir = configured ?? (process.env.VERCEL ? '/tmp' : './uploads');
+    const dir = resolveUploadDir(this.configService.get<string>('UPLOAD_DIR'));
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     return dir;
   }
