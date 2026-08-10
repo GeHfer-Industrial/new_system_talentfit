@@ -85,6 +85,8 @@ export interface Resume {
   extractedSkills: string[]
   score: number
   classification: Classification
+  originalScore: number | null
+  originalClassification: Classification | null
   classificationEngine: string
   aiSummary: string | null
   createdAt: string

@@ -148,6 +148,21 @@ export default function ResumeDetailPage() {
               </div>
             </div>
 
+            {preRegistration?.digitalResume && resume.originalScore != null && resume.originalClassification != null && (
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100 text-sm">
+                <span className="text-slate-500">Comparação:</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full text-slate-700">
+                  Currículo <strong>{Math.round(resume.originalScore)}</strong>
+                  <ClassificationBadge classification={resume.originalClassification} />
+                </span>
+                <span className="text-slate-400">→</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full text-blue-700">
+                  Currículo digital <strong>{Math.round(resume.score)}</strong>
+                  <ClassificationBadge classification={resume.classification} />
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-3 mt-5 pt-5 border-t border-slate-100">
               <Button
                 variant="secondary"

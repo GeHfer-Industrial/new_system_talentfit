@@ -75,6 +75,8 @@ export class ResumeService {
         extractedLanguages: result.candidateLanguages as unknown as Prisma.InputJsonValue,
         score: result.score,
         classification: result.classification,
+        originalScore: result.score,
+        originalClassification: result.classification,
         classificationEngine: result.engine,
         aiSummary: result.aiSummary,
         emailId: emailId ?? undefined,

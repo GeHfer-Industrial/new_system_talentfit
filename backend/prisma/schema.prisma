@@ -189,8 +189,10 @@ model Resume {
   extractedExperiences Json?
   extractedEducations  Json?
   extractedLanguages   Json?
-  score                Float          @default(0)
-  classification       Classification
+  score                   Float          @default(0)
+  classification          Classification
+  originalScore           Float?
+  originalClassification  Classification?
   classificationEngine String         @default("keyword")
   aiSummary            String?        @db.Text
   emailId              String?
