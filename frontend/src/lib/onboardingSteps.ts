@@ -12,7 +12,6 @@ export interface OnboardingStep {
 
 const ALL: UserRole[] = ['ADMIN', 'RECRUITER', 'VIEWER']
 const OPERATORS: UserRole[] = ['ADMIN', 'RECRUITER']
-const ADMIN_ONLY: UserRole[] = ['ADMIN']
 
 export const onboardingSteps: OnboardingStep[] = [
   {
@@ -137,24 +136,6 @@ export const onboardingSteps: OnboardingStep[] = [
       'Quando a IA encontra uma vaga sugerida pro candidato, ela aparece como um chip verde clicável na coluna "Possíveis vagas" — clique nela (ou em "Associar a vaga") pra mover o candidato de volta pra Currículos.',
     side: 'top',
     roles: OPERATORS,
-  },
-  {
-    path: '/email-config',
-    selector: '[data-tour="emailconfig-imap"]',
-    title: '📧 Config. E-mail',
-    description:
-      'Configure a caixa de entrada que recebe currículos por e-mail. O sistema verifica automaticamente a cada 15 minutos e processa os anexos em PDF/DOCX cujo assunto combine com o filtro configurado.',
-    side: 'right',
-    roles: ADMIN_ONLY,
-  },
-  {
-    path: '/email-config',
-    selector: '[data-tour="emailconfig-smtp"]',
-    title: 'Resposta automática',
-    description:
-      'Configure o envio automático de um e-mail com o link de pré-cadastro pro candidato, assim que o currículo dele é recebido e processado.',
-    side: 'left',
-    roles: ADMIN_ONLY,
   },
   {
     path: '/users',

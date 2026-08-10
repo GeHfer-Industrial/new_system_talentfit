@@ -106,6 +106,7 @@ export function useOnboardingTour() {
   useEffect(() => {
     if (autoStartedRef.current) return
     if (!currentUser || currentUser.onboardingCompletedAt) return
+    if (currentUser.role === 'ADMIN') return
     autoStartedRef.current = true
     const timer = setTimeout(() => startTour(), 600)
     return () => clearTimeout(timer)
