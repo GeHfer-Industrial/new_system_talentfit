@@ -9,7 +9,6 @@ import {
   Mail,
   Users,
   LogOut,
-  ChevronRight,
   KeyRound,
   X,
 } from 'lucide-react'
@@ -78,12 +77,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
     <>
       <div className={clsx('flex flex-col h-full bg-sidebar-bg', mobile ? 'w-full' : 'w-60')}>
         <div className="px-5 py-6 border-b border-white/5">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <ChevronRight className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">TalentFit</span>
-          </div>
+          <img src="/logo_principal.svg" alt="GEHFER" className="h-9 w-auto rounded-md" />
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">

@@ -155,6 +155,9 @@ export default function EmailConfigPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {config?.hasPassword && (
+              <p className="text-xs text-slate-400">Já existe uma senha salva — deixe em branco para mantê-la.</p>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-slate-700">Protocolo</label>
