@@ -5,6 +5,8 @@ import { ClassificationModule } from '../classification/classification.module';
 
 @Module({
   imports: [ClassificationModule],
+
+@Module({
   controllers: [DigitalResumeController],
   providers: [DigitalResumeService],
 })

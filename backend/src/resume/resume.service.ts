@@ -79,14 +79,6 @@ export class ResumeService {
       include: { candidate: true, job: true },
     });
 
-    if (result.classification === Classification.TALENT_POOL) {
-      await this.prisma.talentPool.upsert({
-        where: { candidateId: candidate.id },
-        update: {},
-        create: { candidateId: candidate.id },
-      });
-    }
-
     return resume;
   }
 
@@ -107,9 +99,7 @@ export class ResumeService {
   async findAll(filters?: ResumeFilters) {
     return this.prisma.resume.findMany({
       where: {
-        classification: filters?.classification
-          ? filters.classification
-          : { not: Classification.TALENT_POOL },
+        ...(filters?.classification && { classification: filters.classification }),
         ...(filters?.jobId && { jobId: filters.jobId }),
       },
       include: {

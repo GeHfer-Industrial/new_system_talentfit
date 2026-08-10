@@ -19,6 +19,13 @@ export class DigitalResumeService {
     private readonly prisma: PrismaService,
     private readonly classificationService: ClassificationService,
   ) {}
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateDigitalResumeDto } from './dto/create-digital-resume.dto';
+
+@Injectable()
+export class DigitalResumeService {
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateDigitalResumeDto) {
     const preRegistration = await this.prisma.candidatePreRegistration.findUnique({
@@ -33,6 +40,8 @@ export class DigitalResumeService {
     }
 
     const digitalResume = await this.prisma.$transaction(async (tx) => {
+
+    return this.prisma.$transaction(async (tx) => {
       const digitalResume = await tx.digitalResume.upsert({
         where: { preRegistrationId: dto.preRegistrationId },
         update: { skills: dto.skills ?? [], desiredJobId: dto.desiredJobId ?? null },

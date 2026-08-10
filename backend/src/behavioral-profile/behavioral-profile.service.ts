@@ -44,6 +44,10 @@ export class BehavioralProfileService {
       };
     });
 
+    // Desempate: Array.prototype.sort é estável, então em caso de pontuação igual prevalece
+    // a ordem de `points` abaixo — E (Executor/Tubarão) > C (Comunicador/Gato) >
+    // A (Analista/Lobo) > V (Visionário/Águia). Ex.: 7/7/7/4 entre E, C, A, V resolve
+    // dominante=E, secundário=C.
     const ranked = (Object.keys(points) as CategoryCode[]).sort((a, b) => points[b] - points[a]);
     const dominantProfile = ranked[0];
     const secondaryProfile = ranked[1];
