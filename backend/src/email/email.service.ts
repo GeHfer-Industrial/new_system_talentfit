@@ -189,14 +189,12 @@ export class EmailService {
 
     if (!config) throw new NotFoundException('Nenhuma configuração de e-mail ativa. Salve as configurações primeiro.');
 
-    const uploadDir = this.resumeService.getUploadDir();
     let messages;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subjectFilter: string | undefined = (config as any).subjectFilter ?? undefined;
       messages = await this.imapProvider.fetchUnread(
         { host: config.host, port: config.port, user: config.user, password: config.password },
-        uploadDir,
         subjectFilter,
       );
     } catch (err) {
@@ -220,12 +218,12 @@ export class EmailService {
               originalname: attachment.originalName,
               encoding: '7bit',
               mimetype: attachment.mimeType,
-              path: attachment.filePath,
+              path: '',
               filename: attachment.filename,
-              size: 0,
+              size: attachment.buffer.length,
               stream: null as never,
-              destination: uploadDir,
-              buffer: null as never,
+              destination: '',
+              buffer: attachment.buffer,
             },
             emailRecord.id,
           );

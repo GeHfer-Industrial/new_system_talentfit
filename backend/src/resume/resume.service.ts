@@ -3,15 +3,14 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import * as path from 'path';
-import * as fs from 'fs';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
+import { ResumeStorageService } from './resume-storage.service';
 import { Classification, Prisma } from '@prisma/client';
-import { resolveUploadDir } from '../common/resolve-upload-dir';
 
 interface ResumeFilters {
   classification?: Classification;
@@ -30,14 +29,14 @@ export class ResumeService {
     private readonly classificationService: ClassificationService,
     private readonly pdfExtractor: PdfExtractor,
     private readonly docxExtractor: DocxExtractor,
-    private readonly configService: ConfigService,
+    private readonly resumeStorageService: ResumeStorageService,
   ) {}
 
   async uploadAndProcess(
     file: Express.Multer.File,
     emailId?: string,
   ) {
-    const extractedText = await this.extractText(file.path, file.mimetype);
+    const extractedText = await this.extractText(file.buffer, file.mimetype);
     if (!extractedText.trim()) {
       throw new BadRequestException('Não foi possível extrair texto do arquivo');
     }
@@ -53,10 +52,13 @@ export class ResumeService {
       /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/,
     );
 
+    const filename = `${randomUUID()}${path.extname(file.originalname)}`;
+    await this.resumeStorageService.upload(filename, file.buffer, file.mimetype);
+
     const candidate = await this.prisma.candidate.create({
       data: {
         name: candidateName,
-        resumeFile: file.filename,
+        resumeFile: filename,
         phone: phoneMatch?.[0]?.trim() ?? undefined,
         email: emailMatch?.[0]?.trim() ?? undefined,
       },
@@ -83,16 +85,12 @@ export class ResumeService {
     return resume;
   }
 
-  async extractText(filePath: string, mimeType: string): Promise<string> {
-    if (mimeType === 'application/pdf' || filePath.endsWith('.pdf')) {
-      return this.pdfExtractor.extract(filePath);
+  async extractText(buffer: Buffer, mimeType: string): Promise<string> {
+    if (mimeType === 'application/pdf') {
+      return this.pdfExtractor.extract(buffer);
     }
-    if (
-      mimeType ===
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-      filePath.endsWith('.docx')
-    ) {
-      return this.docxExtractor.extract(filePath);
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      return this.docxExtractor.extract(buffer);
     }
     throw new BadRequestException(`Tipo de arquivo não suportado: ${mimeType}`);
   }
@@ -168,10 +166,8 @@ export class ResumeService {
 
   async remove(id: string) {
     const resume = await this.findOne(id);
-    const uploadDir = this.getUploadDir();
-    const filePath = path.join(uploadDir, resume.candidate.resumeFile ?? '');
-    if (resume.candidate.resumeFile && fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (resume.candidate.resumeFile) {
+      await this.resumeStorageService.remove(resume.candidate.resumeFile);
     }
     return this.prisma.resume.delete({ where: { id } });
   }
@@ -186,11 +182,5 @@ export class ResumeService {
     const base = path.basename(filename, path.extname(filename));
     if (!uuidPattern.test(base)) return base.replace(/[-_]/g, ' ').trim();
     return 'Candidato';
-  }
-
-  getUploadDir(): string {
-    const dir = resolveUploadDir(this.configService.get<string>('UPLOAD_DIR'));
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    return dir;
   }
 }

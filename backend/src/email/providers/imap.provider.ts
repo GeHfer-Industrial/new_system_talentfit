@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { simpleParser } from 'mailparser';
 import { EventEmitter } from 'events';
 import * as path from 'path';
-import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -12,7 +11,7 @@ export interface EmailAttachment {
   filename: string;
   originalName: string;
   mimeType: string;
-  filePath: string;
+  buffer: Buffer;
 }
 
 export interface EmailMessage {
@@ -40,7 +39,7 @@ export class ImapProvider extends EventEmitter {
     return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
-  async fetchUnread(config: ImapConfig, uploadDir: string, subjectFilter?: string): Promise<EmailMessage[]> {
+  async fetchUnread(config: ImapConfig, subjectFilter?: string): Promise<EmailMessage[]> {
     return new Promise((resolve, reject) => {
       const imap = new ImapLib({
         user: config.user,
@@ -105,17 +104,15 @@ export class ImapProvider extends EventEmitter {
                         if (!RESUME_EXTENSIONS.includes(ext)) continue;
 
                         const saveName = `${randomUUID()}${ext}`;
-                        const savePath = path.join(uploadDir, saveName);
-                        fs.writeFileSync(savePath, att.content);
 
                         attachments.push({
                           filename: saveName,
                           originalName: att.filename ?? saveName,
                           mimeType: att.contentType,
-                          filePath: savePath,
+                          buffer: att.content,
                         });
 
-                        this.logger.log(`Anexo salvo: ${saveName}`);
+                        this.logger.log(`Anexo recebido: ${saveName}`);
                       }
 
                       if (attachments.length > 0) {
