@@ -11,7 +11,6 @@ import {
   IsUUID,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { EducationLevel, EducationStatus, LanguageLevel } from '@prisma/client';
 
 export class WorkExperienceDto {
@@ -35,7 +34,6 @@ export class WorkExperienceDto {
   endDate?: string;
 
   @ApiProperty({ required: false, default: false })
-  @ApiProperty({ default: false })
   @IsOptional()
   @IsBoolean()
   current?: boolean;
