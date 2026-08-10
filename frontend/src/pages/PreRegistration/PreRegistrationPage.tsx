@@ -92,6 +92,22 @@ function onlyDigits(value: string) {
   return value.replace(/\D/g, '')
 }
 
+function maskCpf(value: string) {
+  const digits = onlyDigits(value).slice(0, 11)
+  if (digits.length > 9) return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4')
+  if (digits.length > 6) return digits.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3')
+  if (digits.length > 3) return digits.replace(/(\d{3})(\d{1,3})/, '$1.$2')
+  return digits
+}
+
+function maskRg(value: string) {
+  const cleaned = value.toUpperCase().replace(/[^0-9X]/g, '').slice(0, 9)
+  if (cleaned.length > 8) return cleaned.replace(/^(\d{2})(\d{3})(\d{3})(.{1})$/, '$1.$2.$3-$4')
+  if (cleaned.length > 5) return cleaned.replace(/^(\d{2})(\d{3})(.{1,3})$/, '$1.$2.$3')
+  if (cleaned.length > 2) return cleaned.replace(/^(\d{2})(.{1,3})$/, '$1.$2')
+  return cleaned
+}
+
 function shuffle<T>(items: T[]): T[] {
   const result = [...items]
   for (let i = result.length - 1; i > 0; i--) {
@@ -302,12 +318,20 @@ export default function PreRegistrationPage() {
                       required
                     />
                     <div className="grid grid-cols-2 gap-4">
-                      <Input label="RG" value={form.rg} onChange={update('rg')} required />
+                      <Input
+                        label="RG"
+                        value={form.rg}
+                        onChange={(e) => setForm((prev) => ({ ...prev, rg: maskRg(e.target.value) }))}
+                        placeholder="00.000.000-0"
+                        inputMode="numeric"
+                        required
+                      />
                       <Input
                         label="CPF"
                         value={form.cpf}
-                        onChange={update('cpf')}
+                        onChange={(e) => setForm((prev) => ({ ...prev, cpf: maskCpf(e.target.value) }))}
                         placeholder="000.000.000-00"
+                        inputMode="numeric"
                         required
                       />
                     </div>
