@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from './useAuth'
 
@@ -10,6 +10,7 @@ export interface CurrentUser {
   email: string
   role: UserRole
   createdAt: string
+  onboardingCompletedAt: string | null
 }
 
 export function useCurrentUser() {
@@ -23,4 +24,12 @@ export function useCurrentUser() {
   })
 
   return { currentUser, isLoading, role: currentUser?.role }
+}
+
+export function useCompleteOnboarding() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post('/users/me/onboarding'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  })
 }

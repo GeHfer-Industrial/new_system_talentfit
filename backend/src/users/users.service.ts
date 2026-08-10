@@ -47,6 +47,13 @@ export class UsersService {
     return user;
   }
 
+  async completeOnboarding(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { onboardingCompletedAt: new Date() },
+    });
+  }
+
   async create(dto: CreateUserDto) {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
     const { error } = await this.supabaseAdmin.auth.admin.inviteUserByEmail(dto.email, {

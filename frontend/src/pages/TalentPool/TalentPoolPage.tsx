@@ -130,6 +130,7 @@ export default function TalentPoolPage() {
           loading={reEvaluate.isPending}
           onClick={() => reEvaluate.mutate()}
           title="Reclassifica todos os candidatos com IA usando as vagas abertas atuais"
+          data-tour="talentpool-reevaluate"
         >
           <RefreshCw className="h-4 w-4" />
           Reclassificar com IA
@@ -142,7 +143,7 @@ export default function TalentPoolPage() {
           description={filterJobId ? 'Tente outro filtro ou remova o filtro de vaga.' : 'Candidatos sem vaga compatível aparecem aqui.'}
         />
       ) : (
-        <Card padding="none">
+        <Card padding="none" data-tour="talentpool-table">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

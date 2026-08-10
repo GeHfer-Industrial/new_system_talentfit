@@ -130,7 +130,7 @@ export default function EmailConfigPage() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl space-y-6">
-      <Card>
+      <Card data-tour="emailconfig-imap">
         <h2 className="font-semibold text-slate-900 mb-4">Configuração IMAP</h2>
         <div className="space-y-4">
           <Input label="Host IMAP" placeholder="imap.gmail.com" value={form.host} onChange={(e) => set('host', e.target.value)} />
@@ -198,7 +198,7 @@ export default function EmailConfigPage() {
         </div>
       </Card>
 
-      <Card>
+      <Card data-tour="emailconfig-smtp">
         <h2 className="font-semibold text-slate-900 mb-4">Resposta automática (SMTP)</h2>
         <p className="text-xs text-slate-400 mb-4">
           Ao salvar um currículo recebido por e-mail, responde automaticamente ao remetente com o link do

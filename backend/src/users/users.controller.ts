@@ -25,6 +25,12 @@ export class UsersController {
     return this.usersService.findOne(user.sub);
   }
 
+  @Post('me/onboarding')
+  @ApiOperation({ summary: 'Marca o tutorial de primeiro acesso como concluído' })
+  completeOnboarding(@CurrentUser() user: CurrentUserPayload) {
+    return this.usersService.completeOnboarding(user.sub);
+  }
+
   @Get()
   @Roles(Role.ADMIN, Role.RECRUITER)
   @ApiOperation({ summary: 'Lista todos os usuários' })

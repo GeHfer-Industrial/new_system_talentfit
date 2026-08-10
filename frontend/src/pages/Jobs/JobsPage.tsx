@@ -32,7 +32,7 @@ export default function JobsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="jobs-filter">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -43,7 +43,7 @@ export default function JobsPage() {
             <option value="CLOSED">Fechadas</option>
           </select>
         </div>
-        <Link to="/jobs/new">
+        <Link to="/jobs/new" data-tour="jobs-new">
           <Button>
             <Plus className="h-4 w-4" />
             Nova Vaga
@@ -62,7 +62,10 @@ export default function JobsPage() {
           action={<Link to="/jobs/new"><Button>Nova Vaga</Button></Link>}
         />
       ) : (
-        <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
+        <div
+          data-tour="jobs-grid"
+          className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}
+        >
           {jobs.map((job) => (
             <Card key={job.id} className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">

@@ -14,7 +14,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" data-tour="dashboard-stats">
         {loadingStats ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)
         ) : (
@@ -28,7 +28,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-tour="dashboard-chart">
           <h2 className="font-semibold text-slate-900 mb-4">Currículos por departamento</h2>
           {stats?.byDepartment.length ? (
             <DepartmentChart data={stats.byDepartment} />
@@ -37,7 +37,7 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="lg:col-span-3" padding="none">
+        <Card className="lg:col-span-3" padding="none" data-tour="dashboard-recent">
           <div className="px-6 py-4 border-b border-slate-100">
             <h2 className="font-semibold text-slate-900">Últimos currículos classificados</h2>
           </div>

@@ -139,7 +139,7 @@ export default function ResumesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap" data-tour="resumes-filters">
           <select
             value={classification}
             onChange={(e) => setClassification(e.target.value as Classification | '')}
@@ -171,12 +171,13 @@ export default function ResumesPage() {
             onClick={() => syncEmails.mutate()}
             loading={syncEmails.isPending}
             title="Buscar novos currículos por e-mail"
+            data-tour="resumes-sync"
           >
             <RefreshCw className="h-4 w-4" />
             Sincronizar e-mails
           </Button>
           <input ref={fileRef} type="file" accept=".pdf,.docx" multiple className="hidden" onChange={handleUpload} />
-          <Button onClick={() => fileRef.current?.click()} loading={uploadResume.isPending}>
+          <Button onClick={() => fileRef.current?.click()} loading={uploadResume.isPending} data-tour="resumes-upload">
             <Upload className="h-4 w-4" />
             Enviar currículo(s)
           </Button>
@@ -196,7 +197,7 @@ export default function ResumesPage() {
       ) : !resumes?.length ? (
         <EmptyState title="Nenhum currículo encontrado" description="Envie um PDF ou DOCX para iniciar a triagem." />
       ) : (
-        <Card padding="none">
+        <Card padding="none" data-tour="resumes-table">
           <div className={`overflow-x-auto transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
             <table className="w-full text-sm">
               <thead>

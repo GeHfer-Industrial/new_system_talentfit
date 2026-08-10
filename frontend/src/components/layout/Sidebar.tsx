@@ -10,6 +10,7 @@ import {
   Users,
   LogOut,
   KeyRound,
+  HelpCircle,
   X,
 } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -17,6 +18,7 @@ import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useCurrentUser, UserRole } from '../../hooks/useCurrentUser'
+import { useOnboardingTour } from '../../hooks/useOnboardingTour'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 
@@ -46,6 +48,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   const { session, signOut } = useAuth()
   const { role } = useCurrentUser()
   const navigate = useNavigate()
+  const { startTour } = useOnboardingTour()
 
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -76,7 +79,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   return (
     <>
       <div className={clsx('flex flex-col h-full bg-sidebar-bg', mobile ? 'w-full' : 'w-60')}>
-        <div className="px-5 py-6 border-b border-white/5">
+        <div className="px-5 py-6 border-b border-white/5" data-tour="brand">
           <img src="/logo_principal.svg" alt="GEHFER" className="h-9 w-auto rounded-md" />
         </div>
 
@@ -86,6 +89,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
               key={to}
               to={to}
               onClick={onClose}
+              data-tour={`nav-${to.replace('/', '')}`}
               className={({ isActive }) => clsx('sidebar-link', isActive && 'active')}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -103,6 +107,10 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
               <p className="text-white text-xs font-medium truncate">{session?.user.email}</p>
             </div>
           </div>
+          <button onClick={() => startTour()} className="sidebar-link w-full">
+            <HelpCircle className="h-4 w-4 shrink-0" />
+            Tutorial
+          </button>
           <button
             onClick={() => setShowPasswordModal(true)}
             className="sidebar-link w-full"

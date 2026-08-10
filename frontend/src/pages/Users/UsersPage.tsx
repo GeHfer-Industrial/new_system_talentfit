@@ -95,7 +95,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       {canCreate && (
-        <div className="flex justify-end">
+        <div className="flex justify-end" data-tour="users-new">
           <Button
             variant="primary"
             size="sm"
@@ -181,7 +181,7 @@ export default function UsersPage() {
       {!users?.length ? (
         <EmptyState title="Nenhum usuário" description="Convide usuários usando o botão acima." />
       ) : (
-        <Card padding="none">
+        <Card padding="none" data-tour="users-table">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

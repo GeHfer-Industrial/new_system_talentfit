@@ -81,7 +81,7 @@ export default function ApprovedPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-tour="approved-list">
       <p className="text-sm text-slate-500">
         {resumes.length} candidato{resumes.length !== 1 ? 's' : ''} aprovado{resumes.length !== 1 ? 's' : ''} em {grouped.length} vaga{grouped.length !== 1 ? 's' : ''}
       </p>
