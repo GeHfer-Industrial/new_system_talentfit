@@ -50,6 +50,7 @@ export default function TalentPoolPage() {
     onSuccess: (res) => {
       const { processed, nowCompatible } = res.data.data
       qc.invalidateQueries({ queryKey: ['talent-pool'] })
+      qc.invalidateQueries({ queryKey: ['resumes'] })
       if (nowCompatible > 0) {
         toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
       } else {
@@ -81,6 +82,7 @@ export default function TalentPoolPage() {
     mutationFn: (candidateId: string) => api.post(`/talent-pool/re-evaluate/${candidateId}`),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['talent-pool'] })
+      qc.invalidateQueries({ queryKey: ['resumes'] })
       const { classification } = res.data.data
       if (classification !== 'TALENT_POOL') {
         toast.success('Candidato reclassificado — agora compatível com uma vaga!')

@@ -4,7 +4,6 @@ import { useAuth } from '../hooks/useAuth'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
 import toast from 'react-hot-toast'
-import { ChevronRight } from 'lucide-react'
 
 export default function Login() {
   const { session, signIn, loading } = useAuth()
@@ -25,11 +24,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-            <ChevronRight className="h-6 w-6 text-white" />
-          </div>
-          <span className="text-white font-bold text-2xl tracking-tight">TalentFit</span>
+        <div className="flex items-center justify-center mb-8">
+          <img src="/logo_principal.svg" alt="GEHFER" className="h-14 w-auto rounded-lg" />
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-2xl">

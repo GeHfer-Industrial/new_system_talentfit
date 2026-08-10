@@ -6,13 +6,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useResumes, Classification, useUploadResume, useDeleteResume } from '../../hooks/useResumes'
 import { useJobs } from '../../hooks/useJobs'
 import { api } from '../../lib/api'
-import { ClassificationBadge } from '../../components/ui/Badge'
+import { Badge, ClassificationBadge } from '../../components/ui/Badge'
 import { ScoreBadge } from '../../components/features/candidates/ScoreBadge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { SkeletonRow } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
+
+function PreRegistrationStatusBadge({ preRegistration }: { preRegistration: { behavioralResult: unknown } | null }) {
+  if (!preRegistration) return <Badge variant="neutral">Não enviado</Badge>
+  if (!preRegistration.behavioralResult) return <Badge variant="warning">Incompleto</Badge>
+  return <Badge variant="success">Completo</Badge>
+}
 
 export default function ResumesPage() {
   const [classification, setClassification] = useState<Classification | ''>('')
@@ -208,6 +214,7 @@ export default function ResumesPage() {
                   <th className="px-6 py-3 font-medium">Vaga</th>
                   <th className="px-6 py-3 font-medium">Score</th>
                   <th className="px-6 py-3 font-medium">Classificação</th>
+                  <th className="px-6 py-3 font-medium">Pré-cadastro</th>
                   <th className="px-6 py-3 font-medium">Data</th>
                   <th className="px-6 py-3 font-medium"></th>
                 </tr>
@@ -228,6 +235,9 @@ export default function ResumesPage() {
                     <td className="px-6 py-3 text-slate-600">{r.job?.title ?? <span className="text-slate-400">—</span>}</td>
                     <td className="px-6 py-3"><ScoreBadge score={r.score} /></td>
                     <td className="px-6 py-3"><ClassificationBadge classification={r.classification} /></td>
+                    <td className="px-6 py-3">
+                      <PreRegistrationStatusBadge preRegistration={r.candidate.preRegistration} />
+                    </td>
                     <td className="px-6 py-3 text-slate-500">{new Date(r.createdAt).toLocaleDateString('pt-BR')}</td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">

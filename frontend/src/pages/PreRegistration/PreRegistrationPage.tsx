@@ -1,7 +1,7 @@
 import { useEffect, useState, FormEvent, Dispatch, SetStateAction } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ChevronRight, CheckCircle2, Clock, AlertCircle, X } from 'lucide-react'
+import { CheckCircle2, Clock, AlertCircle, X } from 'lucide-react'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { Spinner } from '../../components/ui/Spinner'
@@ -105,7 +105,7 @@ export default function PreRegistrationPage() {
   const [searchParams] = useSearchParams()
   const candidateId = searchParams.get('candidateId') ?? ''
   const [form, setForm] = useState<PreRegistrationPayload>(() => emptyForm(candidateId))
-  const [step, setStep] = useState<'form' | 'resume' | 'quiz' | 'done'>('form')
+  const [step, setStep] = useState<'form' | 'resume' | 'quiz-intro' | 'quiz' | 'done'>('form')
   const [preRegistrationId, setPreRegistrationId] = useState<string | null>(null)
   const [questionIndex, setQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, CategoryCode>>({})
@@ -213,7 +213,7 @@ export default function PreRegistrationPage() {
         languages: languages.filter((l) => l.language.trim()),
         desiredJobId: desiredJobId || undefined,
       })
-      setStep('quiz')
+      setStep('quiz-intro')
     } catch {
       toast.error('Erro ao enviar o currículo digital. Tente novamente.')
     }
@@ -251,11 +251,8 @@ export default function PreRegistrationPage() {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className={`w-full ${step === 'resume' ? 'max-w-2xl' : 'max-w-lg'}`}>
-        <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-            <ChevronRight className="h-6 w-6 text-white" />
-          </div>
-          <span className="text-white font-bold text-2xl tracking-tight">GEHFER</span>
+        <div className="flex items-center justify-center mb-8">
+          <img src="/logo_principal.svg" alt="GEHFER" className="h-14 w-auto rounded-lg" />
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-2xl">
@@ -595,6 +592,21 @@ export default function PreRegistrationPage() {
                     Continuar para o questionário
                   </Button>
                 </>
+              )}
+
+              {step === 'quiz-intro' && (
+                <div className="text-center py-4">
+                  <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Questionário de perfil comportamental</h2>
+                  <p className="text-slate-500 text-sm mb-6">
+                    São {questions?.length ?? 25} questões e você terá {QUIZ_SECONDS / 60} minutos para respondê-las.
+                    Se o tempo acabar antes de terminar, as respostas são reiniciadas — por isso, procure um momento
+                    tranquilo, sem interrupções, antes de começar.
+                  </p>
+                  <Button className="w-full" onClick={() => setStep('quiz')}>
+                    Iniciar
+                  </Button>
+                </div>
               )}
 
               {step === 'quiz' && currentQuestion && (
