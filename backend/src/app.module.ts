@@ -18,6 +18,7 @@ import { PreRegistrationModule } from './pre-registration/pre-registration.modul
 import { BehavioralProfileModule } from './behavioral-profile/behavioral-profile.module';
 import { DigitalResumeModule } from './digital-resume/digital-resume.module';
 import { FilesModule } from './files/files.module';
+import { ExitInterviewModule } from './exit-interview/exit-interview.module';
 
 @Module({
   providers: [
@@ -41,6 +42,7 @@ import { FilesModule } from './files/files.module';
     PreRegistrationModule,
     BehavioralProfileModule,
     DigitalResumeModule,
+    ExitInterviewModule,
   ],
 })
 export class AppModule {}

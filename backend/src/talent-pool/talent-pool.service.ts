@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Classification } from '@prisma/client';
+import { ApprovalStatus, Classification } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
 
@@ -91,13 +91,18 @@ export class TalentPoolService {
       if (!resume?.extractedText) continue;
 
       const result = await this.classificationService.classify(resume.extractedText);
+      const stillTalentPool = result.classification === Classification.TALENT_POOL;
 
       await this.prisma.resume.update({
         where: { id: resume.id },
         data: {
           score: result.score,
           classification: result.classification,
-          jobId: result.classification === Classification.TALENT_POOL ? null : result.jobId ?? undefined,
+          // Reclassificação automática só atualiza a sugestão da IA. Quando deixa de
+          // ser "sem vaga compatível", volta para PENDING (fila de Currículos) — só
+          // vira APPROVED quando o RH clica em Aprovar/Associar a vaga de fato.
+          approvalStatus: stillTalentPool ? undefined : ApprovalStatus.PENDING,
+          jobId: stillTalentPool ? null : result.jobId ?? undefined,
           extractedSkills: result.candidateSkills.length
             ? result.candidateSkills
             : result.matchedKeywords,
@@ -107,7 +112,7 @@ export class TalentPoolService {
       });
 
       processed++;
-      if (result.classification !== Classification.TALENT_POOL) {
+      if (!stillTalentPool) {
         nowCompatible++;
         await this.prisma.talentPool.delete({ where: { id: entry.id } });
       }
@@ -138,13 +143,16 @@ export class TalentPoolService {
     if (!resume?.extractedText) throw new NotFoundException('Candidato não possui texto de currículo');
 
     const result = await this.classificationService.classify(resume.extractedText);
+    const promoted = result.classification !== Classification.TALENT_POOL;
 
     await this.prisma.resume.update({
       where: { id: resume.id },
       data: {
         score: result.score,
         classification: result.classification,
-        jobId: result.classification === Classification.TALENT_POOL ? null : result.jobId ?? undefined,
+        // Reclassificação automática — só volta pra fila (PENDING), nunca aprova direto.
+        approvalStatus: promoted ? ApprovalStatus.PENDING : undefined,
+        jobId: promoted ? result.jobId ?? undefined : null,
         extractedSkills: result.candidateSkills.length
           ? result.candidateSkills
           : result.matchedKeywords,
@@ -153,7 +161,6 @@ export class TalentPoolService {
       },
     });
 
-    const promoted = result.classification !== Classification.TALENT_POOL;
     if (promoted) {
       await this.prisma.talentPool.delete({ where: { candidateId } });
     }
@@ -174,7 +181,7 @@ export class TalentPoolService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.resume.update({
         where: { id: resume.id },
-        data: { jobId, classification: 'COMPATIBLE' },
+        data: { jobId, classification: 'COMPATIBLE', approvalStatus: ApprovalStatus.APPROVED },
         include: { candidate: true, job: true },
       });
 
@@ -189,6 +196,14 @@ export class TalentPoolService {
       where: { candidateId },
     });
     if (!entry) throw new NotFoundException('Candidato não está no banco de talentos');
-    return this.prisma.talentPool.delete({ where: { candidateId } });
+
+    return this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.talentPool.delete({ where: { candidateId } });
+      await tx.resume.updateMany({
+        where: { candidateId },
+        data: { approvalStatus: ApprovalStatus.PENDING },
+      });
+      return deleted;
+    });
   }
 }

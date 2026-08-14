@@ -135,6 +135,10 @@ export class DigitalResumeService {
       const enrichedText = this.buildEnrichedText(resume.extractedText, data);
       const result = await this.classificationService.classify(enrichedText);
 
+      // Isso só atualiza a SUGESTÃO da IA (score/classificação/vaga) — não move o
+      // candidato para Aprovados nem para o Banco de Talentos automaticamente.
+      // Essas mudanças de status só acontecem quando o RH age explicitamente
+      // (botões Aprovar / Rejeitar / Banco de Talentos / Associar a vaga).
       await this.prisma.resume.update({
         where: { id: resume.id },
         data: {
@@ -145,16 +149,6 @@ export class DigitalResumeService {
           aiSummary: result.aiSummary,
         },
       });
-
-      if (result.classification === Classification.TALENT_POOL) {
-        await this.prisma.talentPool.upsert({
-          where: { candidateId },
-          update: {},
-          create: { candidateId },
-        });
-      } else {
-        await this.prisma.talentPool.deleteMany({ where: { candidateId } });
-      }
     } catch (err) {
       this.logger.error(
         `Erro ao reavaliar score do candidato ${candidateId} após currículo digital`,

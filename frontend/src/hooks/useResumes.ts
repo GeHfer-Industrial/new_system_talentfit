@@ -3,6 +3,7 @@ import { api } from '../lib/api'
 import { EducationLevel, EducationStatus, LanguageLevel } from './useDigitalResume'
 
 export type Classification = 'COMPATIBLE' | 'PARTIAL' | 'TALENT_POOL'
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'TALENT_POOL'
 
 export interface WorkExperience {
   id: string
@@ -85,6 +86,7 @@ export interface Resume {
   extractedSkills: string[]
   score: number
   classification: Classification
+  approvalStatus: ApprovalStatus
   originalScore: number | null
   originalClassification: Classification | null
   classificationEngine: string
@@ -103,7 +105,7 @@ export interface Resume {
 
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data
 
-export function useResumes(filters?: { classification?: Classification; jobId?: string }) {
+export function useResumes(filters?: { classification?: Classification; approvalStatus?: ApprovalStatus; jobId?: string }) {
   return useQuery({
     queryKey: ['resumes', filters],
     queryFn: () => api.get<{ data: Resume[] }>('/resumes', { params: filters }).then(unwrap),
@@ -139,6 +141,12 @@ export function useDeleteResume() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/resumes/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['resumes'] }),
+  })
+}
+
+export function useSendPreRegistrationEmail() {
+  return useMutation({
+    mutationFn: (candidateId: string) => api.post('/email/send-pre-registration', { candidateId }),
   })
 }
 

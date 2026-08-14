@@ -4,10 +4,17 @@ import {
   Post,
   Body,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 import { Role } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { EmailService, UpsertEmailConfigDto } from './email.service';
+
+class SendPreRegistrationEmailDto {
+  @ApiProperty()
+  @IsString()
+  candidateId!: string;
+}
 
 @ApiTags('Email')
 @ApiBearerAuth()
@@ -41,8 +48,16 @@ export class EmailController {
   }
 
   @Post('sync')
+  @Roles(Role.ADMIN, Role.RECRUITER)
   @ApiOperation({ summary: 'Dispara sincronização manual de e-mails' })
   sync() {
     return this.emailService.syncNow();
+  }
+
+  @Post('send-pre-registration')
+  @Roles(Role.ADMIN, Role.RECRUITER)
+  @ApiOperation({ summary: 'Envia o e-mail de pré-cadastro diretamente para o candidato' })
+  sendPreRegistration(@Body() dto: SendPreRegistrationEmailDto) {
+    return this.emailService.sendPreRegistrationEmailToCandidate(dto.candidateId);
   }
 }

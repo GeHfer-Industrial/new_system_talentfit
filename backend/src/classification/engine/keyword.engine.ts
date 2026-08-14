@@ -35,6 +35,7 @@ export interface ClassificationResult {
   score: number;
   classification: Classification;
   matchedKeywords: string[];
+  candidateName: string | null;
   candidateSkills: string[];
   candidateExperiences: CandidateExperience[];
   candidateEducations: CandidateEducation[];
@@ -102,6 +103,7 @@ export class KeywordClassificationEngine implements IClassificationEngine {
       score: bestScore,
       classification,
       matchedKeywords: bestMatches,
+      candidateName: null,
       candidateSkills: bestMatches,
       candidateExperiences: [],
       candidateEducations: [],

@@ -17,7 +17,7 @@ export const onboardingSteps: OnboardingStep[] = [
   {
     path: '/dashboard',
     selector: '[data-tour="brand"]',
-    title: '👋 Bem-vindo ao TalentFit',
+    title: '👋 Bem-vindo ao Gehfer Talent',
     description:
       'Vamos fazer um tour rápido pelas principais telas do sistema. Você pode fechar quando quiser e reabrir esse tutorial depois pelo menu.',
     side: 'right',

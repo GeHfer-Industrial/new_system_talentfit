@@ -45,7 +45,7 @@ export default function EmailConfigPage() {
     subjectFilter: 'curriculo',
     smtpHost: '',
     smtpPort: 587,
-    sendAutoReply: true,
+    sendAutoReply: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const countdown = useNextSyncCountdown()
@@ -195,6 +195,9 @@ export default function EmailConfigPage() {
               <span className="ml-1 font-mono text-xs text-slate-400">— próxima em {countdown}</span>
             )}
           </label>
+          <p className="text-xs text-slate-400 -mt-2">
+            Controla apenas a sincronização automática. Os botões de testar conexão e "Sincronizar agora" funcionam mesmo desativada.
+          </p>
         </div>
       </Card>
 

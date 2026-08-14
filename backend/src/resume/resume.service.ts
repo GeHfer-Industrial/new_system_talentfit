@@ -10,10 +10,11 @@ import { ClassificationService } from '../classification/classification.service'
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
 import { ResumeStorageService } from './resume-storage.service';
-import { Classification, Prisma } from '@prisma/client';
+import { ApprovalStatus, Classification, Prisma } from '@prisma/client';
 
 interface ResumeFilters {
   classification?: Classification;
+  approvalStatus?: ApprovalStatus;
   jobId?: string;
 }
 
@@ -43,7 +44,7 @@ export class ResumeService {
 
     const result = await this.classificationService.classify(extractedText);
 
-    const candidateName = this.extractCandidateName(extractedText, file.originalname);
+    const candidateName = result.candidateName ?? this.extractCandidateName(extractedText, file.originalname);
 
     const phoneMatch = extractedText.match(
       /(?:\+?55[\s-]?)?(?:\(?\d{2}\)?\s?)(?:9\s?)?\d{4}[-\s]?\d{4}/,
@@ -101,6 +102,7 @@ export class ResumeService {
     return this.prisma.resume.findMany({
       where: {
         ...(filters?.classification && { classification: filters.classification }),
+        ...(filters?.approvalStatus && { approvalStatus: filters.approvalStatus }),
         ...(filters?.jobId && { jobId: filters.jobId }),
       },
       include: {
@@ -146,10 +148,18 @@ export class ResumeService {
 
   async updateClassification(id: string, dto: UpdateClassificationDto) {
     await this.findOne(id);
+
+    // Esta função só é chamada a partir de uma ação explícita do RH (Aprovar,
+    // Rejeitar, Banco de Talentos, Alterar vaga) — nunca automaticamente pela IA.
+    // Por isso o approvalStatus é derivado diretamente da classificação escolhida aqui.
+    const approvalStatus =
+      dto.classification === Classification.TALENT_POOL ? ApprovalStatus.TALENT_POOL : ApprovalStatus.APPROVED;
+
     const resume = await this.prisma.resume.update({
       where: { id },
       data: {
         classification: dto.classification,
+        approvalStatus,
         jobId: dto.jobId ?? null,
       },
       include: { candidate: true, job: true },
@@ -161,6 +171,8 @@ export class ResumeService {
         update: {},
         create: { candidateId: resume.candidateId },
       });
+    } else {
+      await this.prisma.talentPool.deleteMany({ where: { candidateId: resume.candidateId } });
     }
 
     return resume;

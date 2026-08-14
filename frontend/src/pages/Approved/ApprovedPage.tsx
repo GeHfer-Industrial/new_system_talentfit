@@ -21,7 +21,7 @@ function SkeletonRow() {
 }
 
 export default function ApprovedPage() {
-  const { data: resumes, isLoading } = useResumes({ classification: 'COMPATIBLE' })
+  const { data: resumes, isLoading } = useResumes({ approvalStatus: 'APPROVED' })
   const updateClassification = useUpdateClassification()
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
 

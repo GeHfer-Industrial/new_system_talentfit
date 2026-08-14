@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Mail,
   Users,
+  UserMinus,
   LogOut,
   KeyRound,
   HelpCircle,
@@ -37,6 +38,7 @@ const links: NavItem[] = [
   { to: '/talent-pool',  icon: Star,             label: 'Banco de Talentos', roles: ['ADMIN', 'RECRUITER'] },
   { to: '/email-config', icon: Mail,             label: 'Config. E-mail',    roles: ['ADMIN'] },
   { to: '/users',        icon: Users,            label: 'Usuários',          roles: ['ADMIN', 'RECRUITER'] },
+  { to: '/exit-interviews', icon: UserMinus,     label: 'Entrevista de Desligamento', roles: ['ADMIN', 'RECRUITER'] },
 ]
 
 interface SidebarProps {

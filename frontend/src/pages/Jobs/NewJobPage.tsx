@@ -6,8 +6,7 @@ import { KeywordInput, Keyword } from '../../components/features/jobs/KeywordInp
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
-
-const departments = ['Tecnologia', 'Marketing', 'Financeiro', 'RH', 'Operações', 'Comercial', 'Jurídico']
+import { DEPARTMENTS } from '../../lib/departments'
 
 export default function NewJobPage() {
   const navigate = useNavigate()
@@ -45,7 +44,7 @@ export default function NewJobPage() {
               className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
             >
               <option value="">Selecione um departamento</option>
-              {departments.map((d) => (
+              {DEPARTMENTS.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
             </select>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { queryClient } from '../lib/queryClient'
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
@@ -20,7 +21,9 @@ export function useAuth() {
   }
 
   const signOut = async () => {
-    return supabase.auth.signOut()
+    const result = await supabase.auth.signOut()
+    queryClient.clear()
+    return result
   }
 
   return { session, loading, signIn, signOut }

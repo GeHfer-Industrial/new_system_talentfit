@@ -21,6 +21,7 @@ const fallback = (): ClassificationResult => ({
   score: 0,
   classification: Classification.TALENT_POOL,
   matchedKeywords: [],
+  candidateName: null,
   candidateSkills: [],
   candidateExperiences: [],
   candidateEducations: [],
@@ -108,18 +109,19 @@ TEXTO DO CURRÍCULO:
 ${resumeText.slice(0, 6000)}
 
 INSTRUÇÕES:
-1. Extraia as competências/habilidades do candidato (independente das vagas)
-2. Identifique a melhor vaga correspondente, considerando sinônimos (ex: "React" = "ReactJS")
-3. Para a melhor vaga, liste as keywords que o candidato possui
-4. Calcule o score: keyword obrigatória = ${config.pointsRequired} pts, desejada = ${config.pointsDesired} pts
-5. Classifique:
+1. Identifique o nome completo do candidato (normalmente no topo do currículo, junto aos dados de contato). Se não conseguir identificar com segurança, retorne null.
+2. Extraia as competências/habilidades do candidato (independente das vagas)
+3. Identifique a melhor vaga correspondente, considerando sinônimos (ex: "React" = "ReactJS")
+4. Para a melhor vaga, liste as keywords que o candidato possui
+5. Calcule o score: keyword obrigatória = ${config.pointsRequired} pts, desejada = ${config.pointsDesired} pts
+6. Classifique:
    - COMPATIBLE: score >= ${config.minScoreToMatch}
    - PARTIAL: 0 < score < ${config.minScoreToMatch}
    - TALENT_POOL: score = 0 ou sem vagas
-6. Escreva um aiSummary em português (máx. 2 frases):
+7. Escreva um aiSummary em português (máx. 2 frases):
    - Se COMPATIBLE/PARTIAL: por que o candidato é compatível
    - Se TALENT_POOL: quais habilidades ele tem, o que falta e quais tipos de vaga poderia preencher futuramente
-7. Extraia também, se estiverem presentes no texto, as experiências profissionais, formação acadêmica e idiomas do candidato:
+8. Extraia também, se estiverem presentes no texto, as experiências profissionais, formação acadêmica e idiomas do candidato:
    - Datas sempre no formato "AAAA-MM" (ano-mês). Se não souber o mês/ano exato, omita o campo.
    - "level" de formação deve ser um destes valores exatos: ${EDUCATION_LEVELS.join(', ')}
    - "status" de formação deve ser um destes valores exatos: ${EDUCATION_STATUSES.join(', ')}
@@ -133,6 +135,7 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
   "score": 0,
   "classification": "COMPATIBLE | PARTIAL | TALENT_POOL",
   "matchedKeywords": ["keyword1"],
+  "candidateName": "Nome Completo do Candidato ou null",
   "candidateSkills": ["skill1", "skill2", "skill3"],
   "candidateExperiences": [{"company": "", "role": "", "startDate": "AAAA-MM", "endDate": "AAAA-MM ou omitir", "current": false, "description": ""}],
   "candidateEducations": [{"institution": "", "course": "", "level": "SUPERIOR", "status": "CONCLUIDO", "startDate": "AAAA-MM", "endDate": "AAAA-MM"}],
@@ -168,6 +171,7 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
         score: Number(parsed.score) || 0,
         classification,
         matchedKeywords: Array.isArray(parsed.matchedKeywords) ? parsed.matchedKeywords : [],
+        candidateName: typeof parsed.candidateName === 'string' && parsed.candidateName.trim() ? parsed.candidateName.trim() : null,
         candidateSkills: Array.isArray(parsed.candidateSkills) ? parsed.candidateSkills : [],
         candidateExperiences: sanitizeExperiences(parsed.candidateExperiences),
         candidateEducations: sanitizeEducations(parsed.candidateEducations),

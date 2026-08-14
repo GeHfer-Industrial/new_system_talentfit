@@ -69,9 +69,12 @@ export class EmailService {
 
   @Cron('*/15 * * * *')
   async syncEmails() {
+    const config = await this.prisma.emailConfig.findFirst({ orderBy: { updatedAt: 'desc' } });
+    if (!config?.active) return;
+
     this.logger.log('Iniciando sincronização automática de e-mails...');
     try {
-      const result = await this.syncNow();
+      const result = await this.performSync(config);
       this.logger.log(`Sincronização automática concluída: ${result.processed} e-mail(s)`);
     } catch (err) {
       this.logger.error('Erro na sincronização automática', err instanceof Error ? err.message : err);
@@ -149,6 +152,26 @@ export class EmailService {
     `;
   }
 
+  private async sendPreRegistrationEmail(
+    config: { smtpHost: string; smtpPort: number; user: string; password: string },
+    to: string,
+    candidateId: string,
+    candidateName: string,
+  ) {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
+    const link = `${frontendUrl}/pre-cadastro?candidateId=${candidateId}`;
+    const logoUrl = `${frontendUrl}/logo_principal_png.png`;
+
+    await this.smtpProvider.sendMail(
+      { host: config.smtpHost, port: config.smtpPort, user: config.user, password: config.password },
+      {
+        to,
+        subject: 'Recebemos seu currículo — GEHFER',
+        html: this.buildPreRegistrationEmailHtml(candidateName, link, logoUrl),
+      },
+    );
+  }
+
   private async sendPreRegistrationReply(
     config: { smtpHost: string | null; smtpPort: number | null; user: string; password: string },
     to: string,
@@ -160,35 +183,73 @@ export class EmailService {
       return;
     }
 
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://new-system-talentfit.vercel.app';
-    const link = `${frontendUrl}/pre-cadastro?candidateId=${candidateId}`;
-    const logoUrl = `${frontendUrl}/logo_principal_png.png`;
-
     try {
-      await this.smtpProvider.sendMail(
-        { host: config.smtpHost, port: config.smtpPort, user: config.user, password: config.password },
-        {
-          to,
-          subject: 'Recebemos seu currículo — GEHFER',
-          html: this.buildPreRegistrationEmailHtml(candidateName, link, logoUrl),
-        },
+      await this.sendPreRegistrationEmail(
+        { smtpHost: config.smtpHost, smtpPort: config.smtpPort, user: config.user, password: config.password },
+        to,
+        candidateId,
+        candidateName,
       );
     } catch (err) {
       this.logger.error(`Erro ao enviar resposta automática para ${to}`, err instanceof Error ? err.message : err);
     }
   }
 
-  async syncNow() {
+  async sendPreRegistrationEmailToCandidate(candidateId: string) {
+    const candidate = await this.prisma.candidate.findUnique({ where: { id: candidateId } });
+    if (!candidate) throw new NotFoundException(`Candidato ${candidateId} não encontrado`);
+    if (!candidate.email) throw new BadRequestException('Candidato não possui e-mail cadastrado');
+
+    const config = await this.getSavedConfigOrThrow();
+    if (!config.smtpHost || !config.smtpPort) {
+      throw new BadRequestException('Configure o host e a porta SMTP em Config. E-mail antes de enviar.');
+    }
+
+    try {
+      await this.sendPreRegistrationEmail(
+        { smtpHost: config.smtpHost, smtpPort: config.smtpPort, user: config.user, password: config.password },
+        candidate.email,
+        candidateId,
+        candidate.name,
+      );
+    } catch (err) {
+      this.logger.error(`Erro ao enviar e-mail de pré-cadastro para ${candidate.email}`, err instanceof Error ? err.message : err);
+      throw new InternalServerErrorException(this.friendlySmtpError(err));
+    }
+
+    return { sent: true };
+  }
+
+  private friendlySmtpError(err: unknown): string {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/ECONNREFUSED/i.test(msg)) return 'Conexão recusada — verifique o host e a porta SMTP';
+    if (/ETIMEDOUT|ECONNRESET/i.test(msg)) return 'Tempo limite de conexão — verifique o host e a porta SMTP';
+    if (/ENOTFOUND/i.test(msg)) return 'Host SMTP não encontrado — verifique o endereço do servidor';
+    if (/auth|LOGIN|credential|password|user/i.test(msg)) return 'Falha de autenticação SMTP — verifique o usuário e a senha';
+    if (/certificate|TLS|SSL/i.test(msg)) return 'Erro de certificado SSL/TLS na conexão SMTP';
+    return 'Erro ao enviar e-mail: ' + msg;
+  }
+
+  private async getSavedConfigOrThrow() {
     let config;
     try {
-      config = await this.prisma.emailConfig.findFirst({ where: { active: true } });
+      config = await this.prisma.emailConfig.findFirst({ orderBy: { updatedAt: 'desc' } });
     } catch (err) {
       this.logger.error('Erro ao buscar configuração de e-mail', err);
       throw new InternalServerErrorException('Erro ao acessar banco de dados: ' + (err instanceof Error ? err.message : err));
     }
 
-    if (!config) throw new NotFoundException('Nenhuma configuração de e-mail ativa. Salve as configurações primeiro.');
+    if (!config) throw new NotFoundException('Nenhuma configuração de e-mail salva. Salve as configurações primeiro.');
+    return config;
+  }
 
+  async syncNow() {
+    const config = await this.getSavedConfigOrThrow();
+    return this.performSync(config);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async performSync(config: any) {
     let messages;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -249,15 +310,7 @@ export class EmailService {
   }
 
   async testConnection() {
-    let config;
-    try {
-      config = await this.prisma.emailConfig.findFirst({ where: { active: true } });
-    } catch (err) {
-      this.logger.error('Erro ao buscar configuração de e-mail', err);
-      throw new InternalServerErrorException('Erro ao acessar banco de dados: ' + (err instanceof Error ? err.message : err));
-    }
-
-    if (!config) throw new NotFoundException('Nenhuma configuração de e-mail ativa. Salve as configurações primeiro.');
+    const config = await this.getSavedConfigOrThrow();
 
     try {
       const ok = await this.imapProvider.testConnection({
@@ -274,8 +327,7 @@ export class EmailService {
   }
 
   async testSmtpConnection() {
-    const config = await this.prisma.emailConfig.findFirst({ where: { active: true } });
-    if (!config) throw new NotFoundException('Nenhuma configuração de e-mail ativa. Salve as configurações primeiro.');
+    const config = await this.getSavedConfigOrThrow();
     if (!config.smtpHost || !config.smtpPort) {
       return { connected: false, error: 'Configure o host e a porta SMTP primeiro' };
     }

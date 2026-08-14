@@ -191,6 +191,7 @@ model Resume {
   extractedLanguages   Json?
   score                   Float          @default(0)
   classification          Classification
+  approvalStatus          ApprovalStatus @default(PENDING)
   originalScore           Float?
   originalClassification  Classification?
   classificationEngine String         @default("keyword")
@@ -205,6 +206,12 @@ model Resume {
 enum Classification {
   COMPATIBLE
   PARTIAL
+  TALENT_POOL
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
   TALENT_POOL
 }
 
@@ -251,4 +258,36 @@ model ClassificationConfig {
   pointsRequired  Int    @default(20)
   pointsDesired   Int    @default(10)
   minScoreToMatch Int    @default(40)
+}
+
+model ExitInterview {
+  id                      String   @id @default(uuid())
+  employeeName            String
+  position                String
+  department              String
+  admissionDate           DateTime
+  terminationDate         DateTime
+  interviewDate           DateTime
+  interviewerName         String
+  departureType           String
+  dismissalReason         String?
+  dismissalReasonOther    String?
+  resignationReason       String?
+  resignationReasonOther  String?
+  toolsSupport            String
+  healthyEnvironment      String
+  teamRelationship        String
+  leadershipRelationship  String
+  receivedFeedback        String
+  couldSuggestIdeas       String
+  feltValued              String
+  growthOpportunities     String
+  clearProcedures         String
+  healthSafety            String
+  benefitsRating          String
+  likedMost               String?  @db.Text
+  improvementSuggestions  String?  @db.Text
+  wouldRecommend          String?  @db.Text
+  finalComments           String?  @db.Text
+  createdAt               DateTime @default(now())
 }

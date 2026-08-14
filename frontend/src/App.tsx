@@ -16,6 +16,9 @@ const ApprovedPage = lazy(() => import('./pages/Approved/ApprovedPage'))
 const TalentPoolPage = lazy(() => import('./pages/TalentPool/TalentPoolPage'))
 const EmailConfigPage = lazy(() => import('./pages/EmailConfig/EmailConfigPage'))
 const UsersPage = lazy(() => import('./pages/Users/UsersPage'))
+const ExitInterviewsPage = lazy(() => import('./pages/ExitInterviews/ExitInterviewsPage'))
+const NewExitInterviewPage = lazy(() => import('./pages/ExitInterviews/NewExitInterviewPage'))
+const ExitInterviewDetailPage = lazy(() => import('./pages/ExitInterviews/ExitInterviewDetailPage'))
 const SetPassword = lazy(() => import('./pages/SetPassword'))
 const PreRegistrationPage = lazy(() => import('./pages/PreRegistration/PreRegistrationPage'))
 
@@ -63,6 +66,9 @@ export default function App() {
             <Route path="talent-pool" element={<RoleRoute roles={FULL_ACCESS}><TalentPoolPage /></RoleRoute>} />
             <Route path="email-config" element={<RoleRoute roles={ADMIN_ONLY}><EmailConfigPage /></RoleRoute>} />
             <Route path="users" element={<RoleRoute roles={FULL_ACCESS}><UsersPage /></RoleRoute>} />
+            <Route path="exit-interviews" element={<RoleRoute roles={FULL_ACCESS}><ExitInterviewsPage /></RoleRoute>} />
+            <Route path="exit-interviews/new" element={<RoleRoute roles={FULL_ACCESS}><NewExitInterviewPage /></RoleRoute>} />
+            <Route path="exit-interviews/:id" element={<RoleRoute roles={FULL_ACCESS}><ExitInterviewDetailPage /></RoleRoute>} />
           </Route>
         </Routes>
       </Suspense>

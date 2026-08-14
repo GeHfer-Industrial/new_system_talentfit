@@ -17,7 +17,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { pathname } = useLocation()
-  const title = titles[pathname] ?? 'TalentFit'
+  const title = titles[pathname] ?? 'Gehfer Talent'
 
   return (
     <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center gap-4">

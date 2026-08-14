@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Download, Trash2, Mail, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useResume, useUpdateClassification, useDeleteResume, Classification } from '../../hooks/useResumes'
+import { useResume, useUpdateClassification, useDeleteResume, useSendPreRegistrationEmail, Classification } from '../../hooks/useResumes'
 import { useJobs } from '../../hooks/useJobs'
 import { ClassificationBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -46,16 +46,12 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-function buildPreRegistrationMessage(candidateId: string) {
+function buildPreRegistrationMessage(candidateId: string, candidateName: string) {
   const url = new URL('/pre-cadastro', window.location.origin)
   url.searchParams.set('candidateId', candidateId)
-  return `Olá! Segue o link para você preencher seu pré-cadastro na Gehfer: ${url.toString()}`
-}
-
-function buildMailtoHref(email: string | null | undefined, message: string) {
-  const subject = encodeURIComponent('Pré-cadastro Gehfer')
-  const body = encodeURIComponent(message)
-  return `mailto:${email ?? ''}?subject=${subject}&body=${body}`
+  const firstName = candidateName.trim().split(/\s+/)[0] || ''
+  const greeting = firstName ? `Olá, ${firstName}!` : 'Olá!'
+  return `${greeting} Segue o link para você preencher seu pré-cadastro na Gehfer: ${url.toString()}`
 }
 
 function buildWhatsappHref(phone: string | null | undefined, message: string) {
@@ -70,6 +66,7 @@ export default function ResumeDetailPage() {
   const { data: jobs } = useJobs({ status: 'OPEN' })
   const updateClassification = useUpdateClassification()
   const deleteResume = useDeleteResume()
+  const sendPreRegistrationEmail = useSendPreRegistrationEmail()
   const navigate = useNavigate()
   const [changeJobOpen, setChangeJobOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState('')
@@ -83,6 +80,16 @@ export default function ResumeDetailPage() {
     await deleteResume.mutateAsync(resume.id)
     toast.success('Currículo excluído')
     navigate('/resumes')
+  }
+
+  const doSendEmail = async () => {
+    try {
+      await sendPreRegistrationEmail.mutateAsync(resume.candidate.id)
+      toast.success('E-mail enviado ao candidato')
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } }
+      toast.error(e?.response?.data?.message ?? 'Erro ao enviar e-mail')
+    }
   }
 
   const classify = async (classification: Classification, jobId?: string, actionKey?: string) => {
@@ -275,14 +282,19 @@ export default function ResumeDetailPage() {
               )}
 
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-                <a href={buildMailtoHref(resume.candidate.email, buildPreRegistrationMessage(resume.candidate.id))}>
-                  <Button variant="secondary" size="sm">
-                    <Mail className="h-4 w-4" />
-                    Enviar por e-mail
-                  </Button>
-                </a>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={doSendEmail}
+                  loading={sendPreRegistrationEmail.isPending}
+                  disabled={!resume.candidate.email}
+                  title={!resume.candidate.email ? 'Candidato não possui e-mail cadastrado' : undefined}
+                >
+                  <Mail className="h-4 w-4" />
+                  Enviar por e-mail
+                </Button>
                 <a
-                  href={buildWhatsappHref(resume.candidate.phone, buildPreRegistrationMessage(resume.candidate.id))}
+                  href={buildWhatsappHref(resume.candidate.phone, buildPreRegistrationMessage(resume.candidate.id, resume.candidate.name))}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
