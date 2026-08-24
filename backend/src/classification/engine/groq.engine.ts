@@ -90,6 +90,8 @@ export class GroqClassificationEngine implements IClassificationEngine {
   constructor(private readonly configService: ConfigService) {
     this.client = new Groq({
       apiKey: this.configService.get<string>('GROQ_API_KEY'),
+      maxRetries: 0,
+      timeout: 20000,
     });
   }
 
