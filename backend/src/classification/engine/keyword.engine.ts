@@ -42,6 +42,7 @@ export interface ClassificationResult {
   candidateLanguages: CandidateLanguage[];
   aiSummary: string | null;
   engine: string;
+  tokensUsed?: number;
 }
 
 export interface IClassificationEngine {

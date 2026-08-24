@@ -15,6 +15,7 @@ import {
 const EDUCATION_LEVELS = ['ENSINO_MEDIO', 'TECNICO', 'SUPERIOR', 'POS_GRADUACAO', 'MESTRADO', 'DOUTORADO'];
 const EDUCATION_STATUSES = ['EM_ANDAMENTO', 'CONCLUIDO', 'TRANCADO'];
 const LANGUAGE_LEVELS = ['BASICO', 'INTERMEDIARIO', 'AVANCADO', 'FLUENTE'];
+const MAX_COMPLETION_TOKENS = 3000;
 
 export class ClassificationRateLimitError extends Error {}
 
@@ -159,7 +160,7 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
       const completion = await this.client.chat.completions.create({
         model: 'openai/gpt-oss-120b',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 3000,
+        max_tokens: MAX_COMPLETION_TOKENS,
         temperature: 0.1,
         response_format: { type: 'json_object' },
       });
@@ -191,6 +192,10 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
         candidateLanguages: sanitizeLanguages(parsed.candidateLanguages),
         aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary : null,
         engine: 'groq',
+        // A Groq reserva "prompt_tokens + max_tokens" contra o limite por minuto (TPM)
+        // no momento da chamada, não o total realmente usado — por isso pausamos com
+        // base nesse valor reservado, não em completion.usage.total_tokens.
+        tokensUsed: (completion.usage?.prompt_tokens ?? 0) + MAX_COMPLETION_TOKENS,
       };
     } catch (err: any) {
       if (isRateLimitError(err)) {

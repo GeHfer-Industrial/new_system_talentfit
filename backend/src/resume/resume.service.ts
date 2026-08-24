@@ -194,7 +194,7 @@ export class ResumeService {
 
   private async classifyAndUpdate(resume: { id: string; extractedText: string }) {
     const result = await this.classificationService.classify(resume.extractedText);
-    return this.prisma.resume.update({
+    const updated = await this.prisma.resume.update({
       where: { id: resume.id },
       data: {
         jobId: result.classification === Classification.TALENT_POOL ? null : result.jobId ?? undefined,
@@ -209,6 +209,7 @@ export class ResumeService {
       },
       include: { candidate: true, job: true },
     });
+    return { ...updated, tokensUsed: result.tokensUsed };
   }
 
   async reclassify(id: string) {

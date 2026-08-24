@@ -184,7 +184,7 @@ export class TalentPoolService {
       await this.prisma.talentPool.delete({ where: { candidateId } });
     }
 
-    return { updated: true, classification: result.classification, promoted };
+    return { updated: true, classification: result.classification, promoted, tokensUsed: result.tokensUsed };
   }
 
   async associateToJob(candidateId: string, jobId: string) {

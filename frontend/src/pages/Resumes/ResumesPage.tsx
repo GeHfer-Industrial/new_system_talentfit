@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useResumes, Classification, useUploadResume, useDeleteResume } from '../../hooks/useResumes'
 import { useJobs } from '../../hooks/useJobs'
 import { api } from '../../lib/api'
+import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS } from '../../lib/groqPacing'
 import { Badge, ClassificationBadge } from '../../components/ui/Badge'
 import { ScoreBadge } from '../../components/features/candidates/ScoreBadge'
 import { Button } from '../../components/ui/Button'
@@ -148,9 +149,11 @@ export default function ResumesPage() {
 
     for (let i = 0; i < pending.length; i++) {
       setReclassifyAllProgress({ current: i + 1, total: pending.length })
+      let waitMs = DEFAULT_RECLASSIFY_WAIT_MS
       try {
         const res = await api.post(`/resumes/${pending[i].id}/reclassify`)
         processed++
+        waitMs = reclassifyWaitMs(res.data?.data?.tokensUsed)
         if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
       } catch (err) {
         if ((err as { response?: { status?: number } })?.response?.status === 429) {
@@ -159,7 +162,7 @@ export default function ResumesPage() {
         }
       }
       qc.invalidateQueries({ queryKey: ['resumes'] })
-      if (i < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, 4000))
+      if (i < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, waitMs))
     }
 
     setReclassifyAllProgress(null)

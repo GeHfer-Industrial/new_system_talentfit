@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Trash2, RefreshCw, Loader2, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../../lib/api'
+import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS } from '../../lib/groqPacing'
 import { useJobs } from '../../hooks/useJobs'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -59,9 +60,11 @@ export default function TalentPoolPage() {
 
     for (let i = 0; i < entries.length; i++) {
       setReEvaluateAllProgress({ current: i + 1, total: entries.length })
+      let waitMs = DEFAULT_RECLASSIFY_WAIT_MS
       try {
         const res = await api.post(`/talent-pool/re-evaluate/${entries[i].candidate.id}`)
         processed++
+        waitMs = reclassifyWaitMs(res.data?.data?.tokensUsed)
         if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
       } catch (err) {
         if ((err as { response?: { status?: number } })?.response?.status === 429) {
@@ -71,7 +74,7 @@ export default function TalentPoolPage() {
       }
       qc.invalidateQueries({ queryKey: ['talent-pool'] })
       qc.invalidateQueries({ queryKey: ['resumes'] })
-      if (i < entries.length - 1) await new Promise((resolve) => setTimeout(resolve, 4000))
+      if (i < entries.length - 1) await new Promise((resolve) => setTimeout(resolve, waitMs))
     }
 
     setReEvaluateAllProgress(null)
