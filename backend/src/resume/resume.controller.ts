@@ -89,12 +89,6 @@ export class ResumeController {
     return this.resumeService.updateClassification(id, dto);
   }
 
-  @Post('reclassify-pending')
-  @ApiOperation({ summary: 'Reclassifica com IA todos os currículos pendentes sem vaga compatível' })
-  reclassifyPending() {
-    return this.resumeService.reclassifyPending();
-  }
-
   @Post(':id/reclassify')
   @ApiOperation({ summary: 'Reclassifica um currículo pendente com IA' })
   reclassify(@Param('id') id: string) {

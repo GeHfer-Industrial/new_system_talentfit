@@ -36,12 +36,6 @@ export class TalentPoolController {
     return this.talentPoolService.findAll(search, jobId);
   }
 
-  @Post('re-evaluate')
-  @ApiOperation({ summary: 'Reclassifica todos os candidatos do banco de talentos com IA' })
-  reEvaluate() {
-    return this.talentPoolService.reEvaluate();
-  }
-
   @Post('re-evaluate/:candidateId')
   @ApiOperation({ summary: 'Reclassifica um candidato específico com IA' })
   reEvaluateOne(@Param('candidateId') candidateId: string) {

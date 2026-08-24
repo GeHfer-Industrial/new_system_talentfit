@@ -224,34 +224,6 @@ export class ResumeService {
     }
   }
 
-  async reclassifyPending() {
-    const resumes = await this.prisma.resume.findMany({
-      where: { approvalStatus: ApprovalStatus.PENDING, classification: Classification.TALENT_POOL },
-      select: { id: true, extractedText: true },
-    });
-
-    let processed = 0;
-    let nowCompatible = 0;
-    let rateLimited = false;
-
-    for (const resume of resumes) {
-      if (!resume.extractedText) continue;
-      try {
-        const updated = await this.classifyAndUpdate(resume);
-        processed++;
-        if (updated.classification !== Classification.TALENT_POOL) nowCompatible++;
-      } catch (err) {
-        if (err instanceof ClassificationRateLimitError) {
-          rateLimited = true;
-          break;
-        }
-        throw err;
-      }
-    }
-
-    return { processed, nowCompatible, rateLimited };
-  }
-
   async remove(id: string) {
     const resume = await this.findOne(id);
     if (resume.candidate.resumeFile) {

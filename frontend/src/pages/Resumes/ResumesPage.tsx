@@ -31,6 +31,7 @@ export default function ResumesPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<{ id: string; name: string } | null>(null)
   const [editName, setEditName] = useState('')
+  const [reclassifyAllProgress, setReclassifyAllProgress] = useState<{ current: number; total: number } | null>(null)
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const uploadResume = useUploadResume()
@@ -65,28 +66,6 @@ export default function ResumesPage() {
         toast.success('Candidato reclassificado — agora compatível com uma vaga!')
       } else {
         toast.success('Candidato reclassificado pela IA')
-      }
-    },
-    onError: (err) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar'
-      toast.error(msg)
-    },
-  })
-
-  const reEvaluateAll = useMutation({
-    mutationFn: () => api.post('/resumes/reclassify-pending'),
-    onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ['resumes'] })
-      const { processed, nowCompatible, rateLimited } = res.data?.data ?? {}
-      if (rateLimited) {
-        toast(
-          `${processed ?? 0} reclassificado(s) — limite de uso da IA atingido, aguarde um pouco e clique em "Avaliar todos" novamente para continuar.`,
-          { icon: '⏳', duration: 6000 },
-        )
-      } else if (nowCompatible > 0) {
-        toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
-      } else {
-        toast.success(`${processed ?? 0} currículo(s) reclassificado(s)`)
       }
     },
     onError: (err) => {
@@ -155,6 +134,47 @@ export default function ResumesPage() {
     jobId: jobId || undefined,
   })
   const { data: jobs } = useJobs()
+
+  const runReclassifyAll = async () => {
+    const pending = (resumes ?? []).filter((r) => r.classification === 'TALENT_POOL')
+    if (!pending.length) {
+      toast('Nenhum currículo pendente para avaliar', { icon: 'ℹ️' })
+      return
+    }
+
+    let processed = 0
+    let nowCompatible = 0
+    let rateLimited = false
+
+    for (let i = 0; i < pending.length; i++) {
+      setReclassifyAllProgress({ current: i + 1, total: pending.length })
+      try {
+        const res = await api.post(`/resumes/${pending[i].id}/reclassify`)
+        processed++
+        if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
+      } catch (err) {
+        if ((err as { response?: { status?: number } })?.response?.status === 429) {
+          rateLimited = true
+          break
+        }
+      }
+      qc.invalidateQueries({ queryKey: ['resumes'] })
+      if (i < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, 4000))
+    }
+
+    setReclassifyAllProgress(null)
+
+    if (rateLimited) {
+      toast(
+        `${processed} de ${pending.length} avaliado(s) — limite de uso da IA atingido, aguarde um pouco e clique em "Avaliar todos" novamente para continuar.`,
+        { icon: '⏳', duration: 6000 },
+      )
+    } else if (nowCompatible > 0) {
+      toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
+    } else {
+      toast.success(`${processed} currículo(s) reclassificado(s)`)
+    }
+  }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -236,12 +256,12 @@ export default function ResumesPage() {
           )}
           <Button
             variant="secondary"
-            onClick={() => reEvaluateAll.mutate()}
-            loading={reEvaluateAll.isPending}
-            title="Reavalia com IA todos os candidatos sem vaga compatível"
+            onClick={runReclassifyAll}
+            loading={!!reclassifyAllProgress}
+            title="Reavalia com IA, um por um, todos os candidatos sem vaga compatível"
           >
             <RefreshCw className="h-4 w-4" />
-            Avaliar todos
+            {reclassifyAllProgress ? `Avaliando ${reclassifyAllProgress.current}/${reclassifyAllProgress.total}...` : 'Avaliar todos'}
           </Button>
           <Button
             variant="secondary"

@@ -34,6 +34,7 @@ export default function TalentPoolPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
   const [selectedJobId, setSelectedJobId] = useState('')
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
+  const [reEvaluateAllProgress, setReEvaluateAllProgress] = useState<{ current: number; total: number } | null>(null)
 
   const { data: pool, isLoading } = useQuery({
     queryKey: ['talent-pool', search, filterJobId],
@@ -45,28 +46,47 @@ export default function TalentPoolPage() {
 
   const { data: jobs } = useJobs({ status: 'OPEN' })
 
-  const reEvaluate = useMutation({
-    mutationFn: () => api.post('/talent-pool/re-evaluate'),
-    onSuccess: (res) => {
-      const { processed, nowCompatible, rateLimited } = res.data.data
+  const runReEvaluateAll = async () => {
+    const entries = (pool as PoolEntry[] | undefined) ?? []
+    if (!entries.length) {
+      toast('Banco de talentos vazio', { icon: 'ℹ️' })
+      return
+    }
+
+    let processed = 0
+    let nowCompatible = 0
+    let rateLimited = false
+
+    for (let i = 0; i < entries.length; i++) {
+      setReEvaluateAllProgress({ current: i + 1, total: entries.length })
+      try {
+        const res = await api.post(`/talent-pool/re-evaluate/${entries[i].candidate.id}`)
+        processed++
+        if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
+      } catch (err) {
+        if ((err as { response?: { status?: number } })?.response?.status === 429) {
+          rateLimited = true
+          break
+        }
+      }
       qc.invalidateQueries({ queryKey: ['talent-pool'] })
       qc.invalidateQueries({ queryKey: ['resumes'] })
-      if (rateLimited) {
-        toast(
-          `${processed} reclassificado(s) — limite de uso da IA atingido, aguarde um pouco e clique novamente para continuar.`,
-          { icon: '⏳', duration: 6000 },
-        )
-      } else if (nowCompatible > 0) {
-        toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
-      } else {
-        toast.success(`${processed} currículos reclassificados`)
-      }
-    },
-    onError: (err) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar'
-      toast.error(msg)
-    },
-  })
+      if (i < entries.length - 1) await new Promise((resolve) => setTimeout(resolve, 4000))
+    }
+
+    setReEvaluateAllProgress(null)
+
+    if (rateLimited) {
+      toast(
+        `${processed} de ${entries.length} reclassificado(s) — limite de uso da IA atingido, aguarde um pouco e clique novamente para continuar.`,
+        { icon: '⏳', duration: 6000 },
+      )
+    } else if (nowCompatible > 0) {
+      toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
+    } else {
+      toast.success(`${processed} currículos reclassificados`)
+    }
+  }
 
   const associate = useMutation({
     mutationFn: ({ candidateId, jobId }: { candidateId: string; jobId: string }) =>
@@ -138,13 +158,13 @@ export default function TalentPoolPage() {
         <Button
           variant="secondary"
           size="sm"
-          loading={reEvaluate.isPending}
-          onClick={() => reEvaluate.mutate()}
-          title="Reclassifica todos os candidatos com IA usando as vagas abertas atuais"
+          loading={!!reEvaluateAllProgress}
+          onClick={runReEvaluateAll}
+          title="Reclassifica, um por um, todos os candidatos com IA usando as vagas abertas atuais"
           data-tour="talentpool-reevaluate"
         >
           <RefreshCw className="h-4 w-4" />
-          Reclassificar com IA
+          {reEvaluateAllProgress ? `Reclassificando ${reEvaluateAllProgress.current}/${reEvaluateAllProgress.total}...` : 'Reclassificar com IA'}
         </Button>
       </div>
 
