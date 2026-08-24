@@ -178,6 +178,50 @@ export class ResumeService {
     return resume;
   }
 
+  private async classifyAndUpdate(resume: { id: string; extractedText: string }) {
+    const result = await this.classificationService.classify(resume.extractedText);
+    return this.prisma.resume.update({
+      where: { id: resume.id },
+      data: {
+        jobId: result.classification === Classification.TALENT_POOL ? null : result.jobId ?? undefined,
+        score: result.score,
+        classification: result.classification,
+        extractedSkills: result.candidateSkills.length ? result.candidateSkills : result.matchedKeywords,
+        extractedExperiences: result.candidateExperiences as unknown as Prisma.InputJsonValue,
+        extractedEducations: result.candidateEducations as unknown as Prisma.InputJsonValue,
+        extractedLanguages: result.candidateLanguages as unknown as Prisma.InputJsonValue,
+        classificationEngine: result.engine,
+        aiSummary: result.aiSummary,
+      },
+      include: { candidate: true, job: true },
+    });
+  }
+
+  async reclassify(id: string) {
+    const resume = await this.findOne(id);
+    if (!resume.extractedText) throw new BadRequestException('Currículo não possui texto extraído');
+    return this.classifyAndUpdate(resume);
+  }
+
+  async reclassifyPending() {
+    const resumes = await this.prisma.resume.findMany({
+      where: { approvalStatus: ApprovalStatus.PENDING, classification: Classification.TALENT_POOL },
+      select: { id: true, extractedText: true },
+    });
+
+    let processed = 0;
+    let nowCompatible = 0;
+
+    for (const resume of resumes) {
+      if (!resume.extractedText) continue;
+      const updated = await this.classifyAndUpdate(resume);
+      processed++;
+      if (updated.classification !== Classification.TALENT_POOL) nowCompatible++;
+    }
+
+    return { processed, nowCompatible };
+  }
+
   async remove(id: string) {
     const resume = await this.findOne(id);
     if (resume.candidate.resumeFile) {

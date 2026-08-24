@@ -21,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Classification } from '@prisma/client';
+import { ApprovalStatus, Classification } from '@prisma/client';
 import { ResumeService } from './resume.service';
 
 class UpdateClassificationDto {
@@ -64,12 +64,14 @@ export class ResumeController {
   @Get()
   @ApiOperation({ summary: 'Lista currículos' })
   @ApiQuery({ name: 'classification', enum: Classification, required: false })
+  @ApiQuery({ name: 'approvalStatus', enum: ApprovalStatus, required: false })
   @ApiQuery({ name: 'jobId', required: false })
   findAll(
     @Query('classification') classification?: Classification,
+    @Query('approvalStatus') approvalStatus?: ApprovalStatus,
     @Query('jobId') jobId?: string,
   ) {
-    return this.resumeService.findAll({ classification, jobId });
+    return this.resumeService.findAll({ classification, approvalStatus, jobId });
   }
 
   @Get(':id')
@@ -85,6 +87,18 @@ export class ResumeController {
     @Body() dto: UpdateClassificationDto,
   ) {
     return this.resumeService.updateClassification(id, dto);
+  }
+
+  @Post('reclassify-pending')
+  @ApiOperation({ summary: 'Reclassifica com IA todos os currículos pendentes sem vaga compatível' })
+  reclassifyPending() {
+    return this.resumeService.reclassifyPending();
+  }
+
+  @Post(':id/reclassify')
+  @ApiOperation({ summary: 'Reclassifica um currículo pendente com IA' })
+  reclassify(@Param('id') id: string) {
+    return this.resumeService.reclassify(id);
   }
 
   @Delete(':id')

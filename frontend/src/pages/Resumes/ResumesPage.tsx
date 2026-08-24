@@ -57,7 +57,7 @@ export default function ResumesPage() {
   }
 
   const reEvaluateOne = useMutation({
-    mutationFn: (candidateId: string) => api.post(`/talent-pool/re-evaluate/${candidateId}`),
+    mutationFn: (resumeId: string) => api.post(`/resumes/${resumeId}/reclassify`),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['resumes'] })
       const classification = res.data?.data?.classification
@@ -74,7 +74,7 @@ export default function ResumesPage() {
   })
 
   const reEvaluateAll = useMutation({
-    mutationFn: () => api.post('/talent-pool/re-evaluate'),
+    mutationFn: () => api.post('/resumes/reclassify-pending'),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['resumes'] })
       const { processed, nowCompatible } = res.data?.data ?? {}
@@ -144,9 +144,11 @@ export default function ResumesPage() {
     }
   }
 
-  const { data: resumes, isLoading, isFetching } = useResumes(
-    classification || jobId ? { classification: classification || undefined, jobId: jobId || undefined } : undefined,
-  )
+  const { data: resumes, isLoading, isFetching } = useResumes({
+    approvalStatus: 'PENDING',
+    classification: classification || undefined,
+    jobId: jobId || undefined,
+  })
   const { data: jobs } = useJobs()
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,12 +342,12 @@ export default function ResumesPage() {
                         )}
                         {r.classification === 'TALENT_POOL' && (
                           <button
-                            onClick={() => reEvaluateOne.mutate(r.candidate.id)}
-                            disabled={reEvaluateOne.isPending && reEvaluateOne.variables === r.candidate.id}
+                            onClick={() => reEvaluateOne.mutate(r.id)}
+                            disabled={reEvaluateOne.isPending && reEvaluateOne.variables === r.id}
                             className="text-slate-400 hover:text-orange-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Reclassificar com IA"
                           >
-                            {reEvaluateOne.isPending && reEvaluateOne.variables === r.candidate.id
+                            {reEvaluateOne.isPending && reEvaluateOne.variables === r.id
                               ? <Loader2 className="h-4 w-4 animate-spin" />
                               : <RefreshCw className="h-4 w-4" />
                             }
