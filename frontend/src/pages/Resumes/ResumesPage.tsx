@@ -56,7 +56,7 @@ export default function ResumesPage() {
     setConfirmDelete(null)
   }
 
-  const reEvaluate = useMutation({
+  const reEvaluateOne = useMutation({
     mutationFn: (candidateId: string) => api.post(`/talent-pool/re-evaluate/${candidateId}`),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['resumes'] })
@@ -65,6 +65,23 @@ export default function ResumesPage() {
         toast.success('Candidato reclassificado — agora compatível com uma vaga!')
       } else {
         toast.success('Candidato reclassificado pela IA')
+      }
+    },
+    onError: (err) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar'
+      toast.error(msg)
+    },
+  })
+
+  const reEvaluateAll = useMutation({
+    mutationFn: () => api.post('/talent-pool/re-evaluate'),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['resumes'] })
+      const { processed, nowCompatible } = res.data?.data ?? {}
+      if (nowCompatible > 0) {
+        toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
+      } else {
+        toast.success(`${processed ?? 0} currículo(s) reclassificado(s)`)
       }
     },
     onError: (err) => {
@@ -212,6 +229,15 @@ export default function ResumesPage() {
           )}
           <Button
             variant="secondary"
+            onClick={() => reEvaluateAll.mutate()}
+            loading={reEvaluateAll.isPending}
+            title="Reavalia com IA todos os candidatos sem vaga compatível"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Avaliar todos
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => syncEmails.mutate()}
             loading={syncEmails.isPending}
             title="Buscar novos currículos por e-mail"
@@ -314,12 +340,12 @@ export default function ResumesPage() {
                         )}
                         {r.classification === 'TALENT_POOL' && (
                           <button
-                            onClick={() => reEvaluate.mutate(r.candidate.id)}
-                            disabled={reEvaluate.isPending && reEvaluate.variables === r.candidate.id}
+                            onClick={() => reEvaluateOne.mutate(r.candidate.id)}
+                            disabled={reEvaluateOne.isPending && reEvaluateOne.variables === r.candidate.id}
                             className="text-slate-400 hover:text-orange-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Reclassificar com IA"
                           >
-                            {reEvaluate.isPending && reEvaluate.variables === r.candidate.id
+                            {reEvaluateOne.isPending && reEvaluateOne.variables === r.candidate.id
                               ? <Loader2 className="h-4 w-4 animate-spin" />
                               : <RefreshCw className="h-4 w-4" />
                             }
