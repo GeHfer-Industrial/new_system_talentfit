@@ -48,16 +48,24 @@ export default function TalentPoolPage() {
   const reEvaluate = useMutation({
     mutationFn: () => api.post('/talent-pool/re-evaluate'),
     onSuccess: (res) => {
-      const { processed, nowCompatible } = res.data.data
+      const { processed, nowCompatible, rateLimited } = res.data.data
       qc.invalidateQueries({ queryKey: ['talent-pool'] })
       qc.invalidateQueries({ queryKey: ['resumes'] })
-      if (nowCompatible > 0) {
+      if (rateLimited) {
+        toast(
+          `${processed} reclassificado(s) — limite de uso da IA atingido, aguarde um pouco e clique novamente para continuar.`,
+          { icon: '⏳', duration: 6000 },
+        )
+      } else if (nowCompatible > 0) {
         toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
       } else {
         toast.success(`${processed} currículos reclassificados`)
       }
     },
-    onError: () => toast.error('Erro ao reclassificar'),
+    onError: (err) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar'
+      toast.error(msg)
+    },
   })
 
   const associate = useMutation({
@@ -90,7 +98,10 @@ export default function TalentPoolPage() {
         toast.success('Candidato reclassificado pela IA')
       }
     },
-    onError: () => toast.error('Erro ao reclassificar candidato'),
+    onError: (err) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar candidato'
+      toast.error(msg)
+    },
   })
 
   const doRemove = () => {

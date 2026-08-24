@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { ApprovalStatus, Classification } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
+import { ClassificationRateLimitError } from '../classification/engine/groq.engine';
 
 @Injectable()
 export class TalentPoolService {
@@ -85,12 +86,22 @@ export class TalentPoolService {
 
     let processed = 0;
     let nowCompatible = 0;
+    let rateLimited = false;
 
     for (const entry of entries) {
       const resume = entry.candidate.resumes[0];
       if (!resume?.extractedText) continue;
 
-      const result = await this.classificationService.classify(resume.extractedText);
+      let result;
+      try {
+        result = await this.classificationService.classify(resume.extractedText);
+      } catch (err) {
+        if (err instanceof ClassificationRateLimitError) {
+          rateLimited = true;
+          break;
+        }
+        throw err;
+      }
       const stillTalentPool = result.classification === Classification.TALENT_POOL;
 
       await this.prisma.resume.update({
@@ -118,7 +129,7 @@ export class TalentPoolService {
       }
     }
 
-    return { processed, nowCompatible };
+    return { processed, nowCompatible, rateLimited };
   }
 
   async reEvaluateOne(candidateId: string) {
@@ -142,7 +153,15 @@ export class TalentPoolService {
     const resume = entry.candidate.resumes[0];
     if (!resume?.extractedText) throw new NotFoundException('Candidato não possui texto de currículo');
 
-    const result = await this.classificationService.classify(resume.extractedText);
+    let result;
+    try {
+      result = await this.classificationService.classify(resume.extractedText);
+    } catch (err) {
+      if (err instanceof ClassificationRateLimitError) {
+        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      throw err;
+    }
     const promoted = result.classification !== Classification.TALENT_POOL;
 
     await this.prisma.resume.update({

@@ -16,6 +16,16 @@ const EDUCATION_LEVELS = ['ENSINO_MEDIO', 'TECNICO', 'SUPERIOR', 'POS_GRADUACAO'
 const EDUCATION_STATUSES = ['EM_ANDAMENTO', 'CONCLUIDO', 'TRANCADO'];
 const LANGUAGE_LEVELS = ['BASICO', 'INTERMEDIARIO', 'AVANCADO', 'FLUENTE'];
 
+export class ClassificationRateLimitError extends Error {}
+
+function isRateLimitError(err: any): boolean {
+  return (
+    err?.status === 429 ||
+    err?.error?.code === 'rate_limit_exceeded' ||
+    /rate_limit_exceeded/i.test(err?.message ?? '')
+  );
+}
+
 const fallback = (): ClassificationResult => ({
   jobId: null,
   score: 0,
@@ -181,6 +191,10 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
         engine: 'groq',
       };
     } catch (err: any) {
+      if (isRateLimitError(err)) {
+        this.logger.error(`Groq rate limit atingido: ${err?.message ?? err}`);
+        throw new ClassificationRateLimitError('Limite de uso da IA (Groq) atingido. Tente novamente em alguns instantes.');
+      }
       this.logger.error(`Groq classification failed: ${err?.message ?? err}`);
       return fallback();
     }

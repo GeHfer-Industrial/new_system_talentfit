@@ -2,11 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
+import { ClassificationRateLimitError } from '../classification/engine/groq.engine';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
 import { ResumeStorageService } from './resume-storage.service';
@@ -42,7 +45,7 @@ export class ResumeService {
       throw new BadRequestException('Não foi possível extrair texto do arquivo');
     }
 
-    const result = await this.classificationService.classify(extractedText);
+    const result = await this.classifyOrThrowFriendly(extractedText);
 
     const candidateName = result.candidateName ?? this.extractCandidateName(extractedText, file.originalname);
 
@@ -178,6 +181,17 @@ export class ResumeService {
     return resume;
   }
 
+  private async classifyOrThrowFriendly(extractedText: string) {
+    try {
+      return await this.classificationService.classify(extractedText);
+    } catch (err) {
+      if (err instanceof ClassificationRateLimitError) {
+        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      throw err;
+    }
+  }
+
   private async classifyAndUpdate(resume: { id: string; extractedText: string }) {
     const result = await this.classificationService.classify(resume.extractedText);
     return this.prisma.resume.update({
@@ -200,7 +214,14 @@ export class ResumeService {
   async reclassify(id: string) {
     const resume = await this.findOne(id);
     if (!resume.extractedText) throw new BadRequestException('Currículo não possui texto extraído');
-    return this.classifyAndUpdate(resume);
+    try {
+      return await this.classifyAndUpdate(resume);
+    } catch (err) {
+      if (err instanceof ClassificationRateLimitError) {
+        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      throw err;
+    }
   }
 
   async reclassifyPending() {
@@ -211,15 +232,24 @@ export class ResumeService {
 
     let processed = 0;
     let nowCompatible = 0;
+    let rateLimited = false;
 
     for (const resume of resumes) {
       if (!resume.extractedText) continue;
-      const updated = await this.classifyAndUpdate(resume);
-      processed++;
-      if (updated.classification !== Classification.TALENT_POOL) nowCompatible++;
+      try {
+        const updated = await this.classifyAndUpdate(resume);
+        processed++;
+        if (updated.classification !== Classification.TALENT_POOL) nowCompatible++;
+      } catch (err) {
+        if (err instanceof ClassificationRateLimitError) {
+          rateLimited = true;
+          break;
+        }
+        throw err;
+      }
     }
 
-    return { processed, nowCompatible };
+    return { processed, nowCompatible, rateLimited };
   }
 
   async remove(id: string) {

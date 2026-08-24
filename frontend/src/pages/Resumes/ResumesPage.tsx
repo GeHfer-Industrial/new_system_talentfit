@@ -77,8 +77,13 @@ export default function ResumesPage() {
     mutationFn: () => api.post('/resumes/reclassify-pending'),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['resumes'] })
-      const { processed, nowCompatible } = res.data?.data ?? {}
-      if (nowCompatible > 0) {
+      const { processed, nowCompatible, rateLimited } = res.data?.data ?? {}
+      if (rateLimited) {
+        toast(
+          `${processed ?? 0} reclassificado(s) — limite de uso da IA atingido, aguarde um pouco e clique em "Avaliar todos" novamente para continuar.`,
+          { icon: '⏳', duration: 6000 },
+        )
+      } else if (nowCompatible > 0) {
         toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
       } else {
         toast.success(`${processed ?? 0} currículo(s) reclassificado(s)`)
