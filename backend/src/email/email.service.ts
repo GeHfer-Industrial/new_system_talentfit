@@ -93,18 +93,7 @@ export class EmailService {
     return msg;
   }
 
-  private escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  private buildPreRegistrationEmailHtml(candidateName: string, link: string, logoUrl: string): string {
-    const firstName = this.escapeHtml(candidateName?.trim().split(/\s+/)[0] || '');
-
+  private buildPreRegistrationEmailHtml(link: string, logoUrl: string): string {
     return `
       <div style="background:#f4f5f7;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
@@ -117,7 +106,7 @@ export class EmailService {
             <td style="padding:32px;">
               <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:#022061;">Recebemos seu currículo!</h1>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333333;">
-                Olá${firstName ? `, ${firstName}` : ''}! Seu currículo já está em análise pela nossa equipe de Recursos Humanos.
+                Olá, candidato(a)! Seu currículo já está em análise pela nossa equipe de Recursos Humanos.
               </p>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333333;">
                 Para continuar seu processo seletivo, precisamos que você complete as próximas etapas pelo link abaixo:
@@ -167,7 +156,7 @@ export class EmailService {
       {
         to,
         subject: 'Recebemos seu currículo — GEHFER',
-        html: this.buildPreRegistrationEmailHtml(candidateName, link, logoUrl),
+        html: this.buildPreRegistrationEmailHtml(link, logoUrl),
       },
     );
   }

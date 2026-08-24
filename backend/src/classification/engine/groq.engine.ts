@@ -145,7 +145,7 @@ Responda APENAS com JSON válido, sem markdown, sem explicações:
 
     try {
       const completion = await this.client.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 3000,
         temperature: 0.1,

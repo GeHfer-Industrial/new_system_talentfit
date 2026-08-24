@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Upload, Download, Trash2, RefreshCw } from 'lucide-react'
+import { Upload, Download, Trash2, RefreshCw, Loader2, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useResumes, Classification, useUploadResume, useDeleteResume } from '../../hooks/useResumes'
@@ -10,6 +10,8 @@ import { Badge, ClassificationBadge } from '../../components/ui/Badge'
 import { ScoreBadge } from '../../components/features/candidates/ScoreBadge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { Input } from '../../components/ui/Input'
+import { Modal } from '../../components/ui/Modal'
 import { SkeletonRow } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
@@ -27,6 +29,8 @@ export default function ResumesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [editingCandidate, setEditingCandidate] = useState<{ id: string; name: string } | null>(null)
+  const [editName, setEditName] = useState('')
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const uploadResume = useUploadResume()
@@ -50,6 +54,46 @@ export default function ResumesPage() {
     await deleteResume.mutateAsync(confirmDelete)
     toast.success('Currículo excluído')
     setConfirmDelete(null)
+  }
+
+  const reEvaluate = useMutation({
+    mutationFn: (candidateId: string) => api.post(`/talent-pool/re-evaluate/${candidateId}`),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['resumes'] })
+      const classification = res.data?.data?.classification
+      if (classification && classification !== 'TALENT_POOL') {
+        toast.success('Candidato reclassificado — agora compatível com uma vaga!')
+      } else {
+        toast.success('Candidato reclassificado pela IA')
+      }
+    },
+    onError: (err) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar'
+      toast.error(msg)
+    },
+  })
+
+  const updateCandidateName = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => api.put(`/candidates/${id}`, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['resumes'] })
+      toast.success('Nome atualizado')
+      setEditingCandidate(null)
+    },
+    onError: (err) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao atualizar nome'
+      toast.error(msg)
+    },
+  })
+
+  const openEditName = (id: string, name: string) => {
+    setEditingCandidate({ id, name })
+    setEditName(name)
+  }
+
+  const saveEditName = () => {
+    if (!editingCandidate || !editName.trim()) return
+    updateCandidateName.mutate({ id: editingCandidate.id, name: editName.trim() })
   }
 
   const toggleSelected = (id: string) => {
@@ -232,7 +276,18 @@ export default function ResumesPage() {
                         aria-label={`Selecionar ${r.candidate.name}`}
                       />
                     </td>
-                    <td className="px-6 py-3 font-medium text-slate-900">{r.candidate.name}</td>
+                    <td className="px-6 py-3 font-medium text-slate-900">
+                      <div className="flex items-center gap-2">
+                        {r.candidate.name}
+                        <button
+                          onClick={() => openEditName(r.candidate.id, r.candidate.name)}
+                          className="text-slate-300 hover:text-primary transition-colors"
+                          title="Editar nome"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-6 py-3 text-slate-600">{r.job?.title ?? <span className="text-slate-400">—</span>}</td>
                     <td className="px-6 py-3"><ScoreBadge score={r.score} /></td>
                     <td className="px-6 py-3"><ClassificationBadge classification={r.classification} /></td>
@@ -256,6 +311,19 @@ export default function ResumesPage() {
                           >
                             <Download className="h-4 w-4" />
                           </a>
+                        )}
+                        {r.classification === 'TALENT_POOL' && (
+                          <button
+                            onClick={() => reEvaluate.mutate(r.candidate.id)}
+                            disabled={reEvaluate.isPending && reEvaluate.variables === r.candidate.id}
+                            className="text-slate-400 hover:text-orange-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Reclassificar com IA"
+                          >
+                            {reEvaluate.isPending && reEvaluate.variables === r.candidate.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <RefreshCw className="h-4 w-4" />
+                            }
+                          </button>
                         )}
                         <button
                           onClick={() => setConfirmDelete(r.id)}
@@ -293,6 +361,27 @@ export default function ResumesPage() {
         description={`Deseja excluir ${selectedIds.size} currículo${selectedIds.size > 1 ? 's' : ''}? Os arquivos também serão removidos. Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
       />
+
+      <Modal
+        open={!!editingCandidate}
+        onClose={() => setEditingCandidate(null)}
+        title="Editar nome do candidato"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditingCandidate(null)}>Cancelar</Button>
+            <Button onClick={saveEditName} loading={updateCandidateName.isPending} disabled={!editName.trim()}>
+              Salvar
+            </Button>
+          </>
+        }
+      >
+        <Input
+          label="Nome"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          autoFocus
+        />
+      </Modal>
     </div>
   )
 }
