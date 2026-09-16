@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   HttpException,
@@ -9,7 +10,7 @@ import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
-import { ClassificationRateLimitError } from '../classification/engine/groq.engine';
+import { ClassificationRateLimitError, fallback as classificationFallback } from '../classification/engine/groq.engine';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
 import { ResumeStorageService } from './resume-storage.service';
@@ -28,6 +29,8 @@ interface UpdateClassificationDto {
 
 @Injectable()
 export class ResumeService {
+  private readonly logger = new Logger(ResumeService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly classificationService: ClassificationService,
@@ -45,7 +48,7 @@ export class ResumeService {
       throw new BadRequestException('Não foi possível extrair texto do arquivo');
     }
 
-    const result = await this.classifyOrThrowFriendly(extractedText);
+    const result = await this.classifyOrFallback(extractedText);
 
     const candidateName = result.candidateName ?? this.extractCandidateName(extractedText, file.originalname);
 
@@ -181,12 +184,17 @@ export class ResumeService {
     return resume;
   }
 
-  private async classifyOrThrowFriendly(extractedText: string) {
+  // Upload/importação (manual ou via e-mail) nunca pode falhar por causa da IA —
+  // se a Groq estiver com rate limit, salva o currículo sem avaliação (pendente,
+  // sem vaga compatível) em vez de descartar o currículo inteiro. O RH reclassifica
+  // depois pelos botões "Reclassificar com IA" / "Avaliar todos".
+  private async classifyOrFallback(extractedText: string) {
     try {
       return await this.classificationService.classify(extractedText);
     } catch (err) {
       if (err instanceof ClassificationRateLimitError) {
-        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+        this.logger.warn('Limite de uso da IA atingido durante o upload — currículo salvo sem avaliação, poderá ser reclassificado depois');
+        return classificationFallback();
       }
       throw err;
     }

@@ -27,7 +27,7 @@ function isRateLimitError(err: any): boolean {
   );
 }
 
-const fallback = (): ClassificationResult => ({
+export const fallback = (): ClassificationResult => ({
   jobId: null,
   score: 0,
   classification: Classification.TALENT_POOL,
