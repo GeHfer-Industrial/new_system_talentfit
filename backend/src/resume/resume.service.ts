@@ -20,6 +20,8 @@ interface ResumeFilters {
   classification?: Classification;
   approvalStatus?: ApprovalStatus;
   jobId?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 interface UpdateClassificationDto {
@@ -105,22 +107,33 @@ export class ResumeService {
   }
 
   async findAll(filters?: ResumeFilters) {
-    return this.prisma.resume.findMany({
-      where: {
-        ...(filters?.classification && { classification: filters.classification }),
-        ...(filters?.approvalStatus && { approvalStatus: filters.approvalStatus }),
-        ...(filters?.jobId && { jobId: filters.jobId }),
-      },
-      include: {
-        candidate: {
-          include: {
-            preRegistration: { select: { id: true, behavioralResult: { select: { id: true } } } },
+    const page = filters?.page && filters.page > 0 ? filters.page : 1;
+    const pageSize = filters?.pageSize && filters.pageSize > 0 ? filters.pageSize : 25;
+    const where = {
+      ...(filters?.classification && { classification: filters.classification }),
+      ...(filters?.approvalStatus && { approvalStatus: filters.approvalStatus }),
+      ...(filters?.jobId && { jobId: filters.jobId }),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.resume.findMany({
+        where,
+        include: {
+          candidate: {
+            include: {
+              preRegistration: { select: { id: true, behavioralResult: { select: { id: true } } } },
+            },
           },
+          job: { select: { id: true, title: true, department: true } },
         },
-        job: { select: { id: true, title: true, department: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.resume.count({ where }),
+    ]);
+
+    return { items, total, page, pageSize };
   }
 
   async findOne(id: string) {

@@ -21,7 +21,10 @@ function SkeletonRow() {
 }
 
 export default function ApprovedPage() {
-  const { data: resumes, isLoading } = useResumes({ approvalStatus: 'APPROVED' })
+  // Esta tela ainda não tem paginação própria — pede uma página grande o suficiente
+  // para continuar mostrando todos os aprovados de uma vez, como antes.
+  const { data, isLoading } = useResumes({ approvalStatus: 'APPROVED', pageSize: 1000 })
+  const resumes = data?.items
   const updateClassification = useUpdateClassification()
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
 

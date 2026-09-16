@@ -105,10 +105,23 @@ export interface Resume {
 
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data
 
-export function useResumes(filters?: { classification?: Classification; approvalStatus?: ApprovalStatus; jobId?: string }) {
+export interface PaginatedResumes {
+  items: Resume[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export function useResumes(filters?: {
+  classification?: Classification
+  approvalStatus?: ApprovalStatus
+  jobId?: string
+  page?: number
+  pageSize?: number
+}) {
   return useQuery({
     queryKey: ['resumes', filters],
-    queryFn: () => api.get<{ data: Resume[] }>('/resumes', { params: filters }).then(unwrap),
+    queryFn: () => api.get<{ data: PaginatedResumes }>('/resumes', { params: filters }).then(unwrap),
     staleTime: 60 * 1000,
   })
 }

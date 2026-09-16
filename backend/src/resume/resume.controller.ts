@@ -62,16 +62,26 @@ export class ResumeController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lista currículos' })
+  @ApiOperation({ summary: 'Lista currículos (paginado)' })
   @ApiQuery({ name: 'classification', enum: Classification, required: false })
   @ApiQuery({ name: 'approvalStatus', enum: ApprovalStatus, required: false })
   @ApiQuery({ name: 'jobId', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'pageSize', required: false })
   findAll(
     @Query('classification') classification?: Classification,
     @Query('approvalStatus') approvalStatus?: ApprovalStatus,
     @Query('jobId') jobId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.resumeService.findAll({ classification, approvalStatus, jobId });
+    return this.resumeService.findAll({
+      classification,
+      approvalStatus,
+      jobId,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
   }
 
   @Get(':id')

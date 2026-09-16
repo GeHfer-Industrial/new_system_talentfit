@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Upload, Download, Trash2, RefreshCw, Loader2, Pencil } from 'lucide-react'
+import { Upload, Download, Trash2, RefreshCw, Loader2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useResumes, Classification, useUploadResume, useDeleteResume } from '../../hooks/useResumes'
@@ -23,9 +23,12 @@ function PreRegistrationStatusBadge({ preRegistration }: { preRegistration: { be
   return <Badge variant="success">Completo</Badge>
 }
 
+const PAGE_SIZE = 20
+
 export default function ResumesPage() {
   const [classification, setClassification] = useState<Classification | ''>('')
   const [jobId, setJobId] = useState('')
+  const [page, setPage] = useState(1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -145,15 +148,25 @@ export default function ResumesPage() {
     }
   }
 
-  const { data: resumes, isLoading, isFetching } = useResumes({
+  const { data, isLoading, isFetching } = useResumes({
     approvalStatus: 'PENDING',
     classification: classification || undefined,
     jobId: jobId || undefined,
+    page,
+    pageSize: PAGE_SIZE,
   })
+  const resumes = data?.items
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const { data: jobs } = useJobs()
 
   const runReclassifyAll = async () => {
-    const pending = (resumes ?? []).filter((r) => r.classification === 'TALENT_POOL')
+    // Busca todos os pendentes sem vaga compatível, independente da página/filtro
+    // que está sendo exibido na tela no momento.
+    const res = await api.get('/resumes', {
+      params: { approvalStatus: 'PENDING', classification: 'TALENT_POOL', page: 1, pageSize: 10000 },
+    })
+    const pending = res.data?.data?.items ?? []
     if (!pending.length) {
       toast('Nenhum currículo pendente para avaliar', { icon: 'ℹ️' })
       return
@@ -249,7 +262,7 @@ export default function ResumesPage() {
         <div className="flex items-center gap-2 flex-wrap" data-tour="resumes-filters">
           <select
             value={classification}
-            onChange={(e) => setClassification(e.target.value as Classification | '')}
+            onChange={(e) => { setClassification(e.target.value as Classification | ''); setPage(1) }}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">Todas as classificações</option>
@@ -259,7 +272,7 @@ export default function ResumesPage() {
           </select>
           <select
             value={jobId}
-            onChange={(e) => setJobId(e.target.value)}
+            onChange={(e) => { setJobId(e.target.value); setPage(1) }}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">Todas as vagas</option>
@@ -278,9 +291,10 @@ export default function ResumesPage() {
             onClick={runReclassifyAll}
             loading={!!reclassifyAllProgress}
             title="Reavalia com IA, um por um, todos os candidatos sem vaga compatível"
+            className="whitespace-nowrap"
           >
             <RefreshCw className="h-4 w-4" />
-            {reclassifyAllProgress ? `Avaliando ${reclassifyAllProgress.current}/${reclassifyAllProgress.total}...` : 'Avaliar todos'}
+            {reclassifyAllProgress ? `Avaliando ${reclassifyAllProgress.current} de ${reclassifyAllProgress.total}` : 'Avaliar todos'}
           </Button>
           <Button
             variant="secondary"
@@ -288,9 +302,14 @@ export default function ResumesPage() {
             loading={!!syncProgress}
             title="Buscar novos currículos por e-mail, sem perder nenhum mesmo com muitos na caixa"
             data-tour="resumes-sync"
+            className="whitespace-nowrap"
           >
             <RefreshCw className="h-4 w-4" />
-            {syncProgress ? `Lendo e-mail ${syncProgress.current}/${syncProgress.total || '...'}...` : 'Sincronizar e-mails'}
+            {syncProgress
+              ? syncProgress.total > 0
+                ? `Lendo e-mail ${syncProgress.current} de ${syncProgress.total}`
+                : 'Verificando e-mails...'
+              : 'Sincronizar e-mails'}
           </Button>
           <input ref={fileRef} type="file" accept=".pdf,.docx" multiple className="hidden" onChange={handleUpload} />
           <Button onClick={() => fileRef.current?.click()} loading={uploadResume.isPending} data-tour="resumes-upload">
@@ -299,6 +318,10 @@ export default function ResumesPage() {
           </Button>
         </div>
       </div>
+
+      <p className="text-xs text-slate-500 text-right -mt-2">
+        {total} currículo{total !== 1 ? 's' : ''} no total
+      </p>
 
       {isLoading ? (
         <Card padding="none">
@@ -412,6 +435,34 @@ export default function ResumesPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {!isLoading && total > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            Página {page} de {totalPages} — {total} currículo{total !== 1 ? 's' : ''} no total
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       <ConfirmModal
