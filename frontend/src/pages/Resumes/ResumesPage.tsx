@@ -33,23 +33,39 @@ export default function ResumesPage() {
   const [editingCandidate, setEditingCandidate] = useState<{ id: string; name: string } | null>(null)
   const [editName, setEditName] = useState('')
   const [reclassifyAllProgress, setReclassifyAllProgress] = useState<{ current: number; total: number } | null>(null)
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null)
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const uploadResume = useUploadResume()
   const deleteResume = useDeleteResume()
 
-  const syncEmails = useMutation({
-    mutationFn: () => api.post('/email/sync'),
-    onSuccess: (res) => {
-      const processed = res.data.data?.processed ?? 0
-      qc.invalidateQueries({ queryKey: ['resumes'] })
-      toast.success(processed > 0 ? `${processed} e-mail(s) sincronizados` : 'Nenhum e-mail novo encontrado')
-    },
-    onError: (err) => {
+  const EMAIL_SYNC_BATCH_SIZE = 5
+
+  const runSyncEmails = async () => {
+    setSyncProgress({ current: 0, total: 0 })
+    let totalProcessed = 0
+    let total = 0
+    try {
+      // Processa em lotes pequenos, um por vez, para nunca perder e-mails mesmo
+      // que existam centenas na caixa — cada lote fica dentro do tempo de execução
+      // do servidor, e o próximo só é buscado depois que o anterior terminar.
+      while (true) {
+        const res = await api.post('/email/sync', undefined, { params: { limit: EMAIL_SYNC_BATCH_SIZE } })
+        const { processed, totalUnseen, remaining } = res.data?.data ?? {}
+        totalProcessed += processed ?? 0
+        total = totalUnseen ?? totalProcessed
+        setSyncProgress({ current: totalProcessed, total })
+        qc.invalidateQueries({ queryKey: ['resumes'] })
+        if (!remaining || remaining <= 0 || !processed) break
+      }
+      toast.success(totalProcessed > 0 ? `${totalProcessed} e-mail(s) sincronizados` : 'Nenhum e-mail novo encontrado')
+    } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao sincronizar'
-      toast.error(msg)
-    },
-  })
+      toast.error(totalProcessed > 0 ? `${msg} (${totalProcessed} já sincronizados até agora)` : msg)
+    } finally {
+      setSyncProgress(null)
+    }
+  }
 
   const doDelete = async () => {
     if (!confirmDelete) return
@@ -268,13 +284,13 @@ export default function ResumesPage() {
           </Button>
           <Button
             variant="secondary"
-            onClick={() => syncEmails.mutate()}
-            loading={syncEmails.isPending}
-            title="Buscar novos currículos por e-mail"
+            onClick={runSyncEmails}
+            loading={!!syncProgress}
+            title="Buscar novos currículos por e-mail, sem perder nenhum mesmo com muitos na caixa"
             data-tour="resumes-sync"
           >
             <RefreshCw className="h-4 w-4" />
-            Sincronizar e-mails
+            {syncProgress ? `Lendo e-mail ${syncProgress.current}/${syncProgress.total || '...'}...` : 'Sincronizar e-mails'}
           </Button>
           <input ref={fileRef} type="file" accept=".pdf,.docx" multiple className="hidden" onChange={handleUpload} />
           <Button onClick={() => fileRef.current?.click()} loading={uploadResume.isPending} data-tour="resumes-upload">

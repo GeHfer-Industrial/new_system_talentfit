@@ -3,8 +3,9 @@ import {
   Get,
   Post,
   Body,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiProperty, ApiQuery } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 import { Role } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -49,9 +50,10 @@ export class EmailController {
 
   @Post('sync')
   @Roles(Role.ADMIN, Role.RECRUITER)
-  @ApiOperation({ summary: 'Dispara sincronização manual de e-mails' })
-  sync() {
-    return this.emailService.syncNow();
+  @ApiOperation({ summary: 'Dispara sincronização manual de e-mails (opcionalmente limitada a N e-mails, para caber no tempo de execução)' })
+  @ApiQuery({ name: 'limit', required: false })
+  sync(@Query('limit') limit?: string) {
+    return this.emailService.syncNow(limit ? Number(limit) : undefined);
   }
 
   @Post('send-pre-registration')

@@ -232,21 +232,22 @@ export class EmailService {
     return config;
   }
 
-  async syncNow() {
+  async syncNow(limit?: number) {
     const config = await this.getSavedConfigOrThrow();
-    return this.performSync(config);
+    return this.performSync(config, limit);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async performSync(config: any) {
-    let messages;
+  private async performSync(config: any, limit?: number) {
+    let messages, totalUnseen, remaining;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subjectFilter: string | undefined = (config as any).subjectFilter ?? undefined;
-      messages = await this.imapProvider.fetchUnread(
+      ({ messages, totalUnseen, remaining } = await this.imapProvider.fetchUnread(
         { host: config.host, port: config.port, user: config.user, password: config.password },
         subjectFilter,
-      );
+        limit,
+      ));
     } catch (err) {
       this.logger.error('Erro de conexão IMAP durante sincronização', err);
       throw new InternalServerErrorException(this.friendlyImapError(err));
@@ -294,8 +295,8 @@ export class EmailService {
       }
     }
 
-    this.logger.log(`Sincronização concluída: ${messages.length} e-mail(s) processados`);
-    return { synced: true, processed: messages.length };
+    this.logger.log(`Sincronização concluída: ${messages.length} e-mail(s) processados, ${remaining} restante(s)`);
+    return { synced: true, processed: messages.length, totalUnseen, remaining };
   }
 
   async testConnection() {

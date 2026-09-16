@@ -39,7 +39,11 @@ export class ImapProvider extends EventEmitter {
     return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
-  async fetchUnread(config: ImapConfig, subjectFilter?: string): Promise<EmailMessage[]> {
+  async fetchUnread(
+    config: ImapConfig,
+    subjectFilter?: string,
+    limit?: number,
+  ): Promise<{ messages: EmailMessage[]; totalUnseen: number; remaining: number }> {
     return new Promise((resolve, reject) => {
       const imap = new ImapLib({
         user: config.user,
@@ -69,12 +73,15 @@ export class ImapProvider extends EventEmitter {
 
             if (!uids || !uids.length) {
               imap.end();
-              return resolve([]);
+              return resolve({ messages: [], totalUnseen: 0, remaining: 0 });
             }
 
-            this.logger.log(`Encontrados ${uids.length} e-mail(s) não lidos`);
+            const totalUnseen = uids.length;
+            const targetUids = limit ? uids.slice(0, limit) : uids;
 
-            const fetch = imap.fetch(uids, { bodies: '' });
+            this.logger.log(`Encontrados ${totalUnseen} e-mail(s) não lidos — processando ${targetUids.length}`);
+
+            const fetch = imap.fetch(targetUids, { bodies: '' });
             const pending: Promise<void>[] = [];
 
             fetch.on('message', (msg: NodeJS.EventEmitter, seqno: number) => {
@@ -139,10 +146,10 @@ export class ImapProvider extends EventEmitter {
             fetch.once('end', async () => {
               await Promise.all(pending);
 
-              imap.addFlags(uids, '\\Seen', (flagErr: Error) => {
+              imap.addFlags(targetUids, '\\Seen', (flagErr: Error) => {
                 if (flagErr) this.logger.warn(`Erro ao marcar como lido: ${flagErr}`);
                 imap.end();
-                resolve(messages);
+                resolve({ messages, totalUnseen, remaining: totalUnseen - targetUids.length });
               });
             });
 
