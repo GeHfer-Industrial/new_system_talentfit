@@ -26,14 +26,23 @@ export class TalentPoolController {
   constructor(private readonly talentPoolService: TalentPoolService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista banco de talentos' })
+  @ApiOperation({ summary: 'Lista banco de talentos (paginado)' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'jobId', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'pageSize', required: false })
   findAll(
     @Query('search') search?: string,
     @Query('jobId') jobId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.talentPoolService.findAll(search, jobId);
+    return this.talentPoolService.findAll(
+      search,
+      jobId,
+      page ? Number(page) : undefined,
+      pageSize ? Number(pageSize) : undefined,
+    );
   }
 
   @Post('re-evaluate/:candidateId')

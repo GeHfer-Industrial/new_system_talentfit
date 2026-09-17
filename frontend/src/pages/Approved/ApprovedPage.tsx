@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Download, Mail, Phone, Trash2, Loader2 } from 'lucide-react'
+import { Download, Mail, Phone, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useResumes, useUpdateClassification } from '../../hooks/useResumes'
 import { ScoreBadge } from '../../components/features/candidates/ScoreBadge'
 import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
+
+const PAGE_SIZE = 20
 
 function SkeletonRow() {
   return (
@@ -21,10 +24,11 @@ function SkeletonRow() {
 }
 
 export default function ApprovedPage() {
-  // Esta tela ainda não tem paginação própria — pede uma página grande o suficiente
-  // para continuar mostrando todos os aprovados de uma vez, como antes.
-  const { data, isLoading } = useResumes({ approvalStatus: 'APPROVED', pageSize: 1000 })
+  const [page, setPage] = useState(1)
+  const { data, isLoading } = useResumes({ approvalStatus: 'APPROVED', page, pageSize: PAGE_SIZE })
   const resumes = data?.items
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const updateClassification = useUpdateClassification()
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
 
@@ -86,7 +90,7 @@ export default function ApprovedPage() {
   return (
     <div className="space-y-8" data-tour="approved-list">
       <p className="text-sm text-slate-500">
-        {resumes.length} candidato{resumes.length !== 1 ? 's' : ''} aprovado{resumes.length !== 1 ? 's' : ''} em {grouped.length} vaga{grouped.length !== 1 ? 's' : ''}
+        {total} candidato{total !== 1 ? 's' : ''} aprovado{total !== 1 ? 's' : ''} no total
       </p>
 
       {grouped.map((group) => (
@@ -161,6 +165,34 @@ export default function ApprovedPage() {
           </Card>
         </section>
       ))}
+
+      {total > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            Página {page} de {totalPages} — {total} candidato{total !== 1 ? 's' : ''} no total
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={!!confirmRemove}

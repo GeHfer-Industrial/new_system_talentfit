@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, Trash2, RefreshCw, Loader2, Download } from 'lucide-react'
+import { Search, Trash2, RefreshCw, Loader2, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../../lib/api'
 import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS } from '../../lib/groqPacing'
@@ -27,28 +27,42 @@ interface PoolEntry {
   }
 }
 
+const PAGE_SIZE = 20
+
 export default function TalentPoolPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [filterJobId, setFilterJobId] = useState('')
+  const [page, setPage] = useState(1)
   const [associateOpen, setAssociateOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
   const [selectedJobId, setSelectedJobId] = useState('')
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
   const [reEvaluateAllProgress, setReEvaluateAllProgress] = useState<{ current: number; total: number } | null>(null)
 
-  const { data: pool, isLoading } = useQuery({
-    queryKey: ['talent-pool', search, filterJobId],
+  const { data, isLoading } = useQuery({
+    queryKey: ['talent-pool', search, filterJobId, page],
     queryFn: () =>
       api
-        .get('/talent-pool', { params: { search: search || undefined, jobId: filterJobId || undefined } })
+        .get('/talent-pool', {
+          params: { search: search || undefined, jobId: filterJobId || undefined, page, pageSize: PAGE_SIZE },
+        })
         .then((r) => r.data.data),
   })
+  const pool = data?.items as PoolEntry[] | undefined
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const { data: jobs } = useJobs({ status: 'OPEN' })
 
+  const changeSearch = (value: string) => { setSearch(value); setPage(1) }
+  const changeFilterJobId = (value: string) => { setFilterJobId(value); setPage(1) }
+
   const runReEvaluateAll = async () => {
-    const entries = (pool as PoolEntry[] | undefined) ?? []
+    // Busca todos os candidatos do banco de talentos, independente da página/filtro
+    // exibido na tela no momento.
+    const res = await api.get('/talent-pool', { params: { page: 1, pageSize: 10000 } })
+    const entries = (res.data?.data?.items ?? []) as PoolEntry[]
     if (!entries.length) {
       toast('Banco de talentos vazio', { icon: 'ℹ️' })
       return
@@ -141,7 +155,7 @@ export default function TalentPoolPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
             placeholder="Buscar candidato ou competência..."
             className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/30 w-64"
           />
@@ -149,7 +163,7 @@ export default function TalentPoolPage() {
 
         <select
           value={filterJobId}
-          onChange={(e) => setFilterJobId(e.target.value)}
+          onChange={(e) => changeFilterJobId(e.target.value)}
           className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Filtrar por vaga compatível</option>
@@ -170,6 +184,10 @@ export default function TalentPoolPage() {
           {reEvaluateAllProgress ? `Reclassificando ${reEvaluateAllProgress.current}/${reEvaluateAllProgress.total}...` : 'Reclassificar com IA'}
         </Button>
       </div>
+
+      <p className="text-xs text-slate-500 text-right -mt-2">
+        {total} candidato{total !== 1 ? 's' : ''} no total
+      </p>
 
       {!pool?.length ? (
         <EmptyState
@@ -192,7 +210,7 @@ export default function TalentPoolPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {(pool as PoolEntry[]).map((entry) => (
+                {(pool ?? []).map((entry) => (
                   <tr key={entry.id} className="hover:bg-slate-50 align-top">
                     <td className="px-6 py-3 font-medium text-slate-900">{entry.candidate.name}</td>
                     <td className="px-6 py-3 text-slate-500">{entry.candidate.email ?? '—'}</td>
@@ -285,6 +303,34 @@ export default function TalentPoolPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {total > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            Página {page} de {totalPages} — {total} candidato{total !== 1 ? 's' : ''} no total
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       <ConfirmModal

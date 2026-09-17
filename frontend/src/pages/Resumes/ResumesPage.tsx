@@ -36,6 +36,7 @@ export default function ResumesPage() {
   const [editingCandidate, setEditingCandidate] = useState<{ id: string; name: string } | null>(null)
   const [editName, setEditName] = useState('')
   const [reclassifyAllProgress, setReclassifyAllProgress] = useState<{ current: number; total: number } | null>(null)
+  const [reclassifySelectedProgress, setReclassifySelectedProgress] = useState<{ current: number; total: number } | null>(null)
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null)
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -160,15 +161,14 @@ export default function ResumesPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const { data: jobs } = useJobs()
 
-  const runReclassifyAll = async () => {
-    // Busca todos os pendentes sem vaga compatível, independente da página/filtro
-    // que está sendo exibido na tela no momento.
-    const res = await api.get('/resumes', {
-      params: { approvalStatus: 'PENDING', classification: 'TALENT_POOL', page: 1, pageSize: 10000 },
-    })
-    const pending = res.data?.data?.items ?? []
-    if (!pending.length) {
-      toast('Nenhum currículo pendente para avaliar', { icon: 'ℹ️' })
+  const runReclassifyBatch = async (
+    ids: string[],
+    emptyMessage: string,
+    setProgress: (p: { current: number; total: number } | null) => void,
+    actionLabel: string,
+  ) => {
+    if (!ids.length) {
+      toast(emptyMessage, { icon: 'ℹ️' })
       return
     }
 
@@ -176,11 +176,11 @@ export default function ResumesPage() {
     let nowCompatible = 0
     let rateLimited = false
 
-    for (let i = 0; i < pending.length; i++) {
-      setReclassifyAllProgress({ current: i + 1, total: pending.length })
+    for (let i = 0; i < ids.length; i++) {
+      setProgress({ current: i + 1, total: ids.length })
       let waitMs = DEFAULT_RECLASSIFY_WAIT_MS
       try {
-        const res = await api.post(`/resumes/${pending[i].id}/reclassify`)
+        const res = await api.post(`/resumes/${ids[i]}/reclassify`)
         processed++
         waitMs = reclassifyWaitMs(res.data?.data?.tokensUsed)
         if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
@@ -191,14 +191,14 @@ export default function ResumesPage() {
         }
       }
       qc.invalidateQueries({ queryKey: ['resumes'] })
-      if (i < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, waitMs))
+      if (i < ids.length - 1) await new Promise((resolve) => setTimeout(resolve, waitMs))
     }
 
-    setReclassifyAllProgress(null)
+    setProgress(null)
 
     if (rateLimited) {
       toast(
-        `${processed} de ${pending.length} avaliado(s) — limite de uso da IA atingido, aguarde um pouco e clique em "Avaliar todos" novamente para continuar.`,
+        `${processed} de ${ids.length} avaliado(s) — limite de uso da IA atingido, aguarde um pouco e clique em "${actionLabel}" novamente para continuar.`,
         { icon: '⏳', duration: 6000 },
       )
     } else if (nowCompatible > 0) {
@@ -206,6 +206,27 @@ export default function ResumesPage() {
     } else {
       toast.success(`${processed} currículo(s) reclassificado(s)`)
     }
+  }
+
+  const runReclassifyAll = async () => {
+    // Busca todos os pendentes sem vaga compatível, independente da página/filtro
+    // que está sendo exibido na tela no momento.
+    const res = await api.get('/resumes', {
+      params: { approvalStatus: 'PENDING', classification: 'TALENT_POOL', page: 1, pageSize: 10000 },
+    })
+    const pending = res.data?.data?.items ?? []
+    await runReclassifyBatch(
+      pending.map((r: { id: string }) => r.id),
+      'Nenhum currículo pendente para avaliar',
+      setReclassifyAllProgress,
+      'Avaliar todos',
+    )
+  }
+
+  const runReclassifySelected = async () => {
+    const ids = Array.from(selectedIds)
+    await runReclassifyBatch(ids, 'Nenhum currículo selecionado', setReclassifySelectedProgress, 'Avaliar selecionados')
+    setSelectedIds(new Set())
   }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,14 +302,30 @@ export default function ResumesPage() {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button variant="danger" onClick={() => setConfirmBulkDelete(true)}>
-              <Trash2 className="h-4 w-4" />
-              Excluir selecionados ({selectedIds.size})
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                onClick={runReclassifySelected}
+                loading={!!reclassifySelectedProgress}
+                disabled={!!reclassifyAllProgress}
+                title="Reavalia com IA, um por um, os currículos selecionados"
+                className="whitespace-nowrap"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {reclassifySelectedProgress
+                  ? `Avaliando ${reclassifySelectedProgress.current} de ${reclassifySelectedProgress.total}`
+                  : `Avaliar selecionados (${selectedIds.size})`}
+              </Button>
+              <Button variant="danger" onClick={() => setConfirmBulkDelete(true)}>
+                <Trash2 className="h-4 w-4" />
+                Excluir selecionados ({selectedIds.size})
+              </Button>
+            </>
           )}
           <Button
             variant="secondary"
             onClick={runReclassifyAll}
+            disabled={!!reclassifySelectedProgress}
             loading={!!reclassifyAllProgress}
             title="Reavalia com IA, um por um, todos os candidatos sem vaga compatível"
             className="whitespace-nowrap"

@@ -11,7 +11,7 @@ export class TalentPoolService {
     private readonly classificationService: ClassificationService,
   ) {}
 
-  async findAll(search?: string, jobId?: string) {
+  async findAll(search?: string, jobId?: string, page?: number, pageSize?: number) {
     const [entries, openJobs] = await Promise.all([
       this.prisma.talentPool.findMany({
         where: {
@@ -62,11 +62,19 @@ export class TalentPoolService {
       return { ...entry, suggestedJobs };
     });
 
-    if (jobId) {
-      return enriched.filter((e) => e.suggestedJobs.some((j) => j.id === jobId));
-    }
+    const filtered = jobId
+      ? enriched.filter((e) => e.suggestedJobs.some((j) => j.id === jobId))
+      : enriched;
 
-    return enriched;
+    // A filtragem por vaga depende das habilidades computadas em memória (não é uma
+    // coluna do banco), então a paginação aqui também é feita em memória, sobre a
+    // lista já filtrada — o volume do banco de talentos não justifica paginar no SQL.
+    const currentPage = page && page > 0 ? page : 1;
+    const currentPageSize = pageSize && pageSize > 0 ? pageSize : 25;
+    const total = filtered.length;
+    const items = filtered.slice((currentPage - 1) * currentPageSize, currentPage * currentPageSize);
+
+    return { items, total, page: currentPage, pageSize: currentPageSize };
   }
 
   async reEvaluate() {
