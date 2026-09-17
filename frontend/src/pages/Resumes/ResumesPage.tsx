@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Upload, Download, Trash2, RefreshCw, Loader2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Upload, Download, Trash2, RefreshCw, Loader2, Pencil, ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useResumes, Classification, useUploadResume, useDeleteResume } from '../../hooks/useResumes'
+import { useResumes, Classification, useUploadResume, useDeleteResume, useUpdateClassification } from '../../hooks/useResumes'
 import { useJobs } from '../../hooks/useJobs'
 import { api } from '../../lib/api'
 import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS, formatWaitDuration } from '../../lib/groqPacing'
@@ -33,6 +33,7 @@ export default function ResumesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkSendingToTalentPool, setBulkSendingToTalentPool] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<{ id: string; name: string } | null>(null)
   const [editName, setEditName] = useState('')
   const [reclassifyAllProgress, setReclassifyAllProgress] = useState<{ current: number; total: number } | null>(null)
@@ -42,6 +43,7 @@ export default function ResumesPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const uploadResume = useUploadResume()
   const deleteResume = useDeleteResume()
+  const updateClassification = useUpdateClassification()
 
   const EMAIL_SYNC_BATCH_SIZE = 5
 
@@ -147,6 +149,20 @@ export default function ResumesPage() {
       toast.error('Erro ao excluir alguns currículos')
     } finally {
       setBulkDeleting(false)
+    }
+  }
+
+  const sendSelectedToTalentPool = async () => {
+    setBulkSendingToTalentPool(true)
+    try {
+      const ids = Array.from(selectedIds)
+      await Promise.all(ids.map((id) => updateClassification.mutateAsync({ id, classification: 'TALENT_POOL' })))
+      toast.success(`${ids.length} currículo${ids.length > 1 ? 's' : ''} enviado${ids.length > 1 ? 's' : ''} para o Banco de Talentos`)
+      setSelectedIds(new Set())
+    } catch {
+      toast.error('Erro ao enviar alguns currículos para o Banco de Talentos')
+    } finally {
+      setBulkSendingToTalentPool(false)
     }
   }
 
@@ -320,6 +336,15 @@ export default function ResumesPage() {
                 {reclassifySelectedProgress
                   ? `Avaliando ${reclassifySelectedProgress.current} de ${reclassifySelectedProgress.total}`
                   : `Avaliar selecionados (${selectedIds.size})`}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={sendSelectedToTalentPool}
+                loading={bulkSendingToTalentPool}
+                className="whitespace-nowrap"
+              >
+                <Star className="h-4 w-4" />
+                Enviar para Banco de Talentos ({selectedIds.size})
               </Button>
               <Button variant="danger" onClick={() => setConfirmBulkDelete(true)}>
                 <Trash2 className="h-4 w-4" />
