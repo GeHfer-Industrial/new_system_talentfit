@@ -10,7 +10,7 @@ import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClassificationService } from '../classification/classification.service';
-import { ClassificationRateLimitError, fallback as classificationFallback } from '../classification/engine/groq.engine';
+import { ClassificationRateLimitError, classificationFallback } from '../classification/engine/shared';
 import { PdfExtractor } from './extractors/pdf.extractor';
 import { DocxExtractor } from './extractors/docx.extractor';
 import { ResumeStorageService } from './resume-storage.service';
@@ -207,7 +207,7 @@ export class ResumeService {
     } catch (err) {
       if (err instanceof ClassificationRateLimitError) {
         this.logger.warn('Limite de uso da IA atingido durante o upload — currículo salvo sem avaliação, poderá ser reclassificado depois');
-        return classificationFallback();
+        return classificationFallback('ia');
       }
       throw err;
     }
@@ -240,7 +240,10 @@ export class ResumeService {
       return await this.classifyAndUpdate(resume);
     } catch (err) {
       if (err instanceof ClassificationRateLimitError) {
-        throw new HttpException(err.message, HttpStatus.TOO_MANY_REQUESTS);
+        throw new HttpException(
+          { message: err.message, retryAfterMs: err.retryAfterMs },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
       }
       throw err;
     }

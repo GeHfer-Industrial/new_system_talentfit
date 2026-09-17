@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useResumes, Classification, useUploadResume, useDeleteResume } from '../../hooks/useResumes'
 import { useJobs } from '../../hooks/useJobs'
 import { api } from '../../lib/api'
-import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS } from '../../lib/groqPacing'
+import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS, formatWaitDuration } from '../../lib/groqPacing'
 import { Badge, ClassificationBadge } from '../../components/ui/Badge'
 import { ScoreBadge } from '../../components/features/candidates/ScoreBadge'
 import { Button } from '../../components/ui/Button'
@@ -90,8 +90,9 @@ export default function ResumesPage() {
       }
     },
     onError: (err) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar'
-      toast.error(msg)
+      const data = (err as { response?: { data?: { message?: string; retryAfterMs?: number } } })?.response?.data
+      const msg = data?.message ?? 'Erro ao reclassificar'
+      toast.error(data?.retryAfterMs ? `${msg} (~${formatWaitDuration(data.retryAfterMs)})` : msg)
     },
   })
 
@@ -175,6 +176,7 @@ export default function ResumesPage() {
     let processed = 0
     let nowCompatible = 0
     let rateLimited = false
+    let retryAfterMs: number | undefined
 
     for (let i = 0; i < ids.length; i++) {
       setProgress({ current: i + 1, total: ids.length })
@@ -185,8 +187,10 @@ export default function ResumesPage() {
         waitMs = reclassifyWaitMs(res.data?.data?.tokensUsed)
         if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
       } catch (err) {
-        if ((err as { response?: { status?: number } })?.response?.status === 429) {
+        const response = (err as { response?: { status?: number; data?: { retryAfterMs?: number } } })?.response
+        if (response?.status === 429) {
           rateLimited = true
+          retryAfterMs = response.data?.retryAfterMs
           break
         }
       }
@@ -197,9 +201,10 @@ export default function ResumesPage() {
     setProgress(null)
 
     if (rateLimited) {
+      const waitLabel = retryAfterMs ? `em ~${formatWaitDuration(retryAfterMs)}` : 'em alguns instantes'
       toast(
-        `${processed} de ${ids.length} avaliado(s) — limite de uso da IA atingido, aguarde um pouco e clique em "${actionLabel}" novamente para continuar.`,
-        { icon: '⏳', duration: 6000 },
+        `${processed} de ${ids.length} avaliado(s) — limite de uso da IA atingido. Tente novamente ${waitLabel} clicando em "${actionLabel}".`,
+        { icon: '⏳', duration: 8000 },
       )
     } else if (nowCompatible > 0) {
       toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)

@@ -6,6 +6,7 @@ import {
   KeywordClassificationEngine,
 } from './engine/keyword.engine';
 import { GroqClassificationEngine } from './engine/groq.engine';
+import { GeminiClassificationEngine } from './engine/gemini.engine';
 
 @Module({
   imports: [ConfigModule],
@@ -13,16 +14,20 @@ import { GroqClassificationEngine } from './engine/groq.engine';
     ClassificationService,
     KeywordClassificationEngine,
     GroqClassificationEngine,
+    GeminiClassificationEngine,
     {
       provide: CLASSIFICATION_ENGINE,
-      inject: [ConfigService, KeywordClassificationEngine, GroqClassificationEngine],
+      inject: [ConfigService, KeywordClassificationEngine, GroqClassificationEngine, GeminiClassificationEngine],
       useFactory: (
         configService: ConfigService,
         keywordEngine: KeywordClassificationEngine,
         groqEngine: GroqClassificationEngine,
+        geminiEngine: GeminiClassificationEngine,
       ) => {
-        const type = configService.get<string>('CLASSIFICATION_ENGINE') ?? 'groq';
-        return type === 'keyword' ? keywordEngine : groqEngine;
+        const type = configService.get<string>('CLASSIFICATION_ENGINE') ?? 'gemini';
+        if (type === 'keyword') return keywordEngine;
+        if (type === 'groq') return groqEngine;
+        return geminiEngine;
       },
     },
   ],

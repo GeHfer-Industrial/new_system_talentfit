@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Trash2, RefreshCw, Loader2, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../../lib/api'
-import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS } from '../../lib/groqPacing'
+import { reclassifyWaitMs, DEFAULT_RECLASSIFY_WAIT_MS, formatWaitDuration } from '../../lib/groqPacing'
 import { useJobs } from '../../hooks/useJobs'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -71,6 +71,7 @@ export default function TalentPoolPage() {
     let processed = 0
     let nowCompatible = 0
     let rateLimited = false
+    let retryAfterMs: number | undefined
 
     for (let i = 0; i < entries.length; i++) {
       setReEvaluateAllProgress({ current: i + 1, total: entries.length })
@@ -81,8 +82,10 @@ export default function TalentPoolPage() {
         waitMs = reclassifyWaitMs(res.data?.data?.tokensUsed)
         if (res.data?.data?.classification && res.data.data.classification !== 'TALENT_POOL') nowCompatible++
       } catch (err) {
-        if ((err as { response?: { status?: number } })?.response?.status === 429) {
+        const response = (err as { response?: { status?: number; data?: { retryAfterMs?: number } } })?.response
+        if (response?.status === 429) {
           rateLimited = true
+          retryAfterMs = response.data?.retryAfterMs
           break
         }
       }
@@ -94,9 +97,10 @@ export default function TalentPoolPage() {
     setReEvaluateAllProgress(null)
 
     if (rateLimited) {
+      const waitLabel = retryAfterMs ? `em ~${formatWaitDuration(retryAfterMs)}` : 'em alguns instantes'
       toast(
-        `${processed} de ${entries.length} reclassificado(s) — limite de uso da IA atingido, aguarde um pouco e clique novamente para continuar.`,
-        { icon: '⏳', duration: 6000 },
+        `${processed} de ${entries.length} reclassificado(s) — limite de uso da IA atingido. Tente novamente ${waitLabel}.`,
+        { icon: '⏳', duration: 8000 },
       )
     } else if (nowCompatible > 0) {
       toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
@@ -136,8 +140,9 @@ export default function TalentPoolPage() {
       }
     },
     onError: (err) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao reclassificar candidato'
-      toast.error(msg)
+      const data = (err as { response?: { data?: { message?: string; retryAfterMs?: number } } })?.response?.data
+      const msg = data?.message ?? 'Erro ao reclassificar candidato'
+      toast.error(data?.retryAfterMs ? `${msg} (~${formatWaitDuration(data.retryAfterMs)})` : msg)
     },
   })
 

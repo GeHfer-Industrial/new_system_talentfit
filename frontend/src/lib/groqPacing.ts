@@ -8,3 +8,13 @@ export function reclassifyWaitMs(tokensUsed: number | undefined) {
   if (!tokensUsed) return DEFAULT_RECLASSIFY_WAIT_MS
   return Math.ceil((tokensUsed / GROQ_TPM_LIMIT) * 60000 * 1.1)
 }
+
+// A Groq às vezes bloqueia por limite diário (TPD), não só por minuto (TPM) —
+// nesse caso a espera real pode ser de vários minutos, bem diferente da pausa
+// normal entre avaliações. Formata o tempo exato que a própria Groq informou.
+export function formatWaitDuration(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000)
+  if (totalSeconds < 60) return `${totalSeconds} segundo${totalSeconds !== 1 ? 's' : ''}`
+  const minutes = Math.ceil(totalSeconds / 60)
+  return `${minutes} minuto${minutes !== 1 ? 's' : ''}`
+}
