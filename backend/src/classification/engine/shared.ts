@@ -31,6 +31,7 @@ export function classificationFallback(engine: string): ClassificationResult {
     candidateLanguages: [],
     aiSummary: null,
     engine,
+    isResume: true,
   };
 }
 
@@ -102,6 +103,7 @@ TEXTO DO CURRÍCULO:
 ${resumeText.slice(0, 6000)}
 
 INSTRUÇÕES:
+0. Antes de tudo, verifique se o TEXTO DO CURRÍCULO acima é realmente um currículo/CV (tem nome, contato, experiência, formação etc). Se for um documento qualquer sem relação com isso (contrato, texto aleatório, arquivo vazio/corrompido, imagem sem texto reconhecível, etc.), defina "isResume": false, "classification": "TALENT_POOL", "score": 0, e escreva no aiSummary que o arquivo não contém informações curriculares — e NÃO tente inventar nome, habilidades, experiências ou formação. Caso contrário, defina "isResume": true e siga as instruções abaixo normalmente.
 1. Identifique o nome completo do candidato (normalmente no topo do currículo, junto aos dados de contato). Se não conseguir identificar com segurança, retorne null.
 2. Extraia as competências/habilidades do candidato (independente das vagas)
 3. Identifique a melhor vaga correspondente, considerando sinônimos (ex: "React" = "ReactJS")
@@ -124,6 +126,7 @@ INSTRUÇÕES:
 
 Responda APENAS com JSON válido, sem markdown, sem explicações:
 {
+  "isResume": true,
   "jobId": "id-da-vaga ou null",
   "score": 0,
   "classification": "COMPATIBLE | PARTIAL | TALENT_POOL",
@@ -143,8 +146,14 @@ export function parseClassificationResponse(text: string, engine: string): Class
 
   const parsed = JSON.parse(jsonMatch[0]);
 
-  const classification: Classification =
-    parsed.classification === 'COMPATIBLE'
+  // Se a IA identificou que o arquivo não é um currículo, força TALENT_POOL/score 0
+  // independente do que ela tenha respondido nesses campos — não faz sentido um
+  // documento sem informações curriculares aparecer como compatível com uma vaga.
+  const isResume = typeof parsed.isResume === 'boolean' ? parsed.isResume : true;
+
+  const classification: Classification = !isResume
+    ? Classification.TALENT_POOL
+    : parsed.classification === 'COMPATIBLE'
       ? Classification.COMPATIBLE
       : parsed.classification === 'PARTIAL'
         ? Classification.PARTIAL
@@ -152,15 +161,16 @@ export function parseClassificationResponse(text: string, engine: string): Class
 
   return {
     jobId: classification === Classification.TALENT_POOL ? null : (parsed.jobId ?? null),
-    score: Number(parsed.score) || 0,
+    score: isResume ? Number(parsed.score) || 0 : 0,
     classification,
     matchedKeywords: Array.isArray(parsed.matchedKeywords) ? parsed.matchedKeywords : [],
-    candidateName: typeof parsed.candidateName === 'string' && parsed.candidateName.trim() ? parsed.candidateName.trim() : null,
-    candidateSkills: Array.isArray(parsed.candidateSkills) ? parsed.candidateSkills : [],
-    candidateExperiences: sanitizeExperiences(parsed.candidateExperiences),
-    candidateEducations: sanitizeEducations(parsed.candidateEducations),
-    candidateLanguages: sanitizeLanguages(parsed.candidateLanguages),
+    candidateName: isResume && typeof parsed.candidateName === 'string' && parsed.candidateName.trim() ? parsed.candidateName.trim() : null,
+    candidateSkills: isResume && Array.isArray(parsed.candidateSkills) ? parsed.candidateSkills : [],
+    candidateExperiences: isResume ? sanitizeExperiences(parsed.candidateExperiences) : [],
+    candidateEducations: isResume ? sanitizeEducations(parsed.candidateEducations) : [],
+    candidateLanguages: isResume ? sanitizeLanguages(parsed.candidateLanguages) : [],
     aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary : null,
     engine,
+    isResume,
   };
 }

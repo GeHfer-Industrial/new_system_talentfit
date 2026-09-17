@@ -127,6 +127,7 @@ export class TalentPoolService {
             : result.matchedKeywords,
           aiSummary: result.aiSummary,
           classificationEngine: result.engine,
+          isResume: result.isResume,
         },
       });
 
@@ -188,6 +189,7 @@ export class TalentPoolService {
           : result.matchedKeywords,
         aiSummary: result.aiSummary,
         classificationEngine: result.engine,
+        isResume: result.isResume,
       },
     });
 

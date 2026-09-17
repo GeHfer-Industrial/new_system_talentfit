@@ -428,7 +428,12 @@ export default function ResumesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {resumes.map((r) => (
-                  <tr key={r.id} className={`hover:bg-slate-50 ${selectedIds.has(r.id) ? 'bg-primary/5' : ''}`}>
+                  <tr
+                    key={r.id}
+                    className={`hover:bg-slate-50 ${
+                      !r.isResume ? 'bg-red-50 hover:bg-red-100' : selectedIds.has(r.id) ? 'bg-primary/5' : ''
+                    }`}
+                  >
                     <td className="px-6 py-3">
                       <input
                         type="checkbox"
@@ -449,6 +454,11 @@ export default function ResumesPage() {
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                       </div>
+                      {!r.isResume && (
+                        <p className="text-xs text-red-600 mt-0.5" title={r.aiSummary ?? undefined}>
+                          ⚠️ Não parece ser um currículo
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-3 text-slate-600">{r.job?.title ?? <span className="text-slate-400">—</span>}</td>
                     <td className="px-6 py-3"><ScoreBadge score={r.score} /></td>

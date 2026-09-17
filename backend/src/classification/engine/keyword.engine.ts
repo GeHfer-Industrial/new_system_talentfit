@@ -43,6 +43,7 @@ export interface ClassificationResult {
   aiSummary: string | null;
   engine: string;
   tokensUsed?: number;
+  isResume: boolean;
 }
 
 export interface IClassificationEngine {
@@ -111,6 +112,7 @@ export class KeywordClassificationEngine implements IClassificationEngine {
       candidateLanguages: [],
       aiSummary: null,
       engine: 'keyword',
+      isResume: true,
     };
   }
 }

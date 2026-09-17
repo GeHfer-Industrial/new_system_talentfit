@@ -88,6 +88,7 @@ export class ResumeService {
         originalClassification: result.classification,
         classificationEngine: result.engine,
         aiSummary: result.aiSummary,
+        isResume: result.isResume,
         emailId: emailId ?? undefined,
       },
       include: { candidate: true, job: true },
@@ -227,6 +228,7 @@ export class ResumeService {
         extractedLanguages: result.candidateLanguages as unknown as Prisma.InputJsonValue,
         classificationEngine: result.engine,
         aiSummary: result.aiSummary,
+        isResume: result.isResume,
       },
       include: { candidate: true, job: true },
     });

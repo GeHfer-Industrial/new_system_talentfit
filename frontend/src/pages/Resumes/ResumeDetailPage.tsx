@@ -155,6 +155,12 @@ export default function ResumeDetailPage() {
               </div>
             </div>
 
+            {!resume.isResume && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                ⚠️ A IA identificou que este arquivo não parece ser um currículo — não foi possível extrair dados curriculares dele.
+              </div>
+            )}
+
             {preRegistration?.digitalResume && resume.originalScore != null && resume.originalClassification != null && (
               <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100 text-sm">
                 <span className="text-slate-500">Comparação:</span>

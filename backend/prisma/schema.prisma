@@ -196,6 +196,7 @@ model Resume {
   originalClassification  Classification?
   classificationEngine String         @default("keyword")
   aiSummary            String?        @db.Text
+  isResume             Boolean        @default(true)
   emailId              String?
   candidate       Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   job             Job?           @relation(fields: [jobId], references: [id])

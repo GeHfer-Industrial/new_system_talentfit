@@ -91,6 +91,7 @@ export interface Resume {
   originalClassification: Classification | null
   classificationEngine: string
   aiSummary: string | null
+  isResume: boolean
   createdAt: string
   candidate: {
     id: string
