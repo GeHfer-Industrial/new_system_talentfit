@@ -66,12 +66,14 @@ export class ResumeController {
   @ApiQuery({ name: 'classification', enum: Classification, required: false })
   @ApiQuery({ name: 'approvalStatus', enum: ApprovalStatus, required: false })
   @ApiQuery({ name: 'jobId', required: false })
+  @ApiQuery({ name: 'evaluated', required: false, description: 'true = já avaliados pela IA, false = ainda não avaliados' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
   findAll(
     @Query('classification') classification?: Classification,
     @Query('approvalStatus') approvalStatus?: ApprovalStatus,
     @Query('jobId') jobId?: string,
+    @Query('evaluated') evaluated?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
@@ -79,6 +81,7 @@ export class ResumeController {
       classification,
       approvalStatus,
       jobId,
+      evaluated: evaluated === 'true' ? true : evaluated === 'false' ? false : undefined,
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
     });

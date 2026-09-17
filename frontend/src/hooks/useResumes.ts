@@ -117,6 +117,7 @@ export function useResumes(filters?: {
   classification?: Classification
   approvalStatus?: ApprovalStatus
   jobId?: string
+  evaluated?: boolean
   page?: number
   pageSize?: number
 }) {

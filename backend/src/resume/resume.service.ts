@@ -20,6 +20,7 @@ interface ResumeFilters {
   classification?: Classification;
   approvalStatus?: ApprovalStatus;
   jobId?: string;
+  evaluated?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -114,6 +115,8 @@ export class ResumeService {
       ...(filters?.classification && { classification: filters.classification }),
       ...(filters?.approvalStatus && { approvalStatus: filters.approvalStatus }),
       ...(filters?.jobId && { jobId: filters.jobId }),
+      ...(filters?.evaluated === false && { aiSummary: null }),
+      ...(filters?.evaluated === true && { aiSummary: { not: null } }),
     };
 
     const [items, total] = await Promise.all([

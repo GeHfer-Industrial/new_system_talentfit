@@ -28,6 +28,7 @@ const PAGE_SIZE = 20
 export default function ResumesPage() {
   const [classification, setClassification] = useState<Classification | ''>('')
   const [jobId, setJobId] = useState('')
+  const [evaluated, setEvaluated] = useState<'' | 'true' | 'false'>('')
   const [page, setPage] = useState(1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -170,6 +171,7 @@ export default function ResumesPage() {
     approvalStatus: 'PENDING',
     classification: classification || undefined,
     jobId: jobId || undefined,
+    evaluated: evaluated === '' ? undefined : evaluated === 'true',
     page,
     pageSize: PAGE_SIZE,
   })
@@ -319,6 +321,15 @@ export default function ResumesPage() {
           >
             <option value="">Todas as vagas</option>
             {jobs?.map((j) => <option key={j.id} value={j.id}>{j.title}</option>)}
+          </select>
+          <select
+            value={evaluated}
+            onChange={(e) => { setEvaluated(e.target.value as '' | 'true' | 'false'); setPage(1) }}
+            className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="">Avaliados e não avaliados</option>
+            <option value="false">Só não avaliados</option>
+            <option value="true">Só avaliados</option>
           </select>
         </div>
         <div className="flex items-center gap-2">
