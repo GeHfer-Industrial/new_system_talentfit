@@ -427,7 +427,7 @@ export default function ResumesPage() {
                     </td>
                     <td className="px-6 py-3 text-slate-600">{r.job?.title ?? <span className="text-slate-400">—</span>}</td>
                     <td className="px-6 py-3"><ScoreBadge score={r.score} /></td>
-                    <td className="px-6 py-3"><ClassificationBadge classification={r.classification} /></td>
+                    <td className="px-6 py-3"><ClassificationBadge classification={r.classification} evaluated={!!r.aiSummary} /></td>
                     <td className="px-6 py-3">
                       <PreRegistrationStatusBadge preRegistration={r.candidate.preRegistration} />
                     </td>

@@ -149,7 +149,7 @@ export default function ResumeDetailPage() {
               <div className="flex items-center gap-4 sm:border-l sm:border-slate-100 sm:pl-6">
                 <ScoreRing score={resume.score} />
                 <div className="flex flex-col gap-1.5">
-                  <ClassificationBadge classification={resume.classification} />
+                  <ClassificationBadge classification={resume.classification} evaluated={!!resume.aiSummary} />
                   <EngineBadge engine={resume.classificationEngine} />
                 </div>
               </div>
@@ -165,7 +165,7 @@ export default function ResumeDetailPage() {
                 <span className="text-slate-400">→</span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full text-blue-700">
                   Currículo digital <strong>{Math.round(resume.score)}</strong>
-                  <ClassificationBadge classification={resume.classification} />
+                  <ClassificationBadge classification={resume.classification} evaluated={!!resume.aiSummary} />
                 </span>
               </div>
             )}

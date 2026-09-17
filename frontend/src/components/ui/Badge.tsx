@@ -24,11 +24,14 @@ export function Badge({ variant = 'neutral', children, className }: BadgeProps) 
   )
 }
 
-export function ClassificationBadge({ classification }: { classification: string }) {
+export function ClassificationBadge({ classification, evaluated = true }: { classification: string; evaluated?: boolean }) {
   const map: Record<string, { label: string; variant: BadgeVariant }> = {
     COMPATIBLE: { label: 'Compatível', variant: 'success' },
     PARTIAL: { label: 'Parcial', variant: 'warning' },
-    TALENT_POOL: { label: 'Sem vaga compatível', variant: 'info' },
+    TALENT_POOL: {
+      label: evaluated ? 'Avaliado / Sem vaga compatível' : 'Não avaliado / Sem vaga compatível',
+      variant: evaluated ? 'info' : 'neutral',
+    },
   }
   const { label, variant } = map[classification] ?? { label: classification, variant: 'neutral' }
   return <Badge variant={variant}>{label}</Badge>
