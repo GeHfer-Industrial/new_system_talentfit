@@ -170,7 +170,16 @@ export function useUpdateClassification() {
   return useMutation({
     mutationFn: ({ id, classification, jobId }: { id: string; classification: Classification; jobId?: string }) =>
       api.put(`/resumes/${id}/classification`, { classification, jobId }),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
+      // Remove o item na hora de qualquer lista em cache (Currículos, Aprovados, etc.) —
+      // não depende de esperar um novo fetch terminar para sumir da tela.
+      qc.setQueriesData({ queryKey: ['resumes'] }, (old: unknown) => {
+        const paginated = old as PaginatedResumes | undefined
+        if (!paginated?.items) return old
+        const items = paginated.items.filter((r) => r.id !== id)
+        if (items.length === paginated.items.length) return old
+        return { ...paginated, items, total: Math.max(0, paginated.total - 1) }
+      })
       qc.invalidateQueries({ queryKey: ['resumes'] })
     },
   })

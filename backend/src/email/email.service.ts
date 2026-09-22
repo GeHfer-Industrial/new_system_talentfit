@@ -106,10 +106,7 @@ export class EmailService {
             <td style="padding:32px;">
               <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:#022061;">Recebemos seu currículo!</h1>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333333;">
-                Olá, candidato(a)! Seu currículo já está em análise pela nossa equipe de Recursos Humanos.
-              </p>
-              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333333;">
-                Para continuar seu processo seletivo, precisamos que você complete as próximas etapas pelo link abaixo:
+                Recebemos seu currículo e, para conseguirmos dar continuidade à análise do mesmo, pedimos que preencha nosso pré-cadastro no link abaixo!
               </p>
               <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.7;color:#333333;">
                 <li>Confirme seus dados pessoais;</li>
@@ -133,7 +130,7 @@ export class EmailService {
           </tr>
           <tr>
             <td style="padding:20px 32px;background:#f4f5f7;border-top:1px solid #e2e8f0;">
-              <p style="margin:0;font-size:12px;color:#94a3b8;">Atenciosamente,<br/>Equipe de Recursos Humanos — GEHFER</p>
+              <p style="margin:0;font-size:12px;color:#94a3b8;">RH Gehfer Industrial</p>
             </td>
           </tr>
         </table>

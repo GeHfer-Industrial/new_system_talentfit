@@ -46,12 +46,10 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-function buildPreRegistrationMessage(candidateId: string, candidateName: string) {
+function buildPreRegistrationMessage(candidateId: string) {
   const url = new URL('/pre-cadastro', window.location.origin)
   url.searchParams.set('candidateId', candidateId)
-  const firstName = candidateName.trim().split(/\s+/)[0] || ''
-  const greeting = firstName ? `Olá, ${firstName}!` : 'Olá!'
-  return `${greeting} Segue o link para você preencher seu pré-cadastro na Gehfer: ${url.toString()}`
+  return `Recebemos seu currículo e para conseguirmos dar continuidade à análise do mesmo, pedimos que preencha nosso pré-cadastro no link abaixo!\n\n${url.toString()}\n\nRH Gehfer Industrial`
 }
 
 function buildWhatsappHref(phone: string | null | undefined, message: string) {
@@ -300,7 +298,7 @@ export default function ResumeDetailPage() {
                   Enviar por e-mail
                 </Button>
                 <a
-                  href={buildWhatsappHref(resume.candidate.phone, buildPreRegistrationMessage(resume.candidate.id, resume.candidate.name))}
+                  href={buildWhatsappHref(resume.candidate.phone, buildPreRegistrationMessage(resume.candidate.id))}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
