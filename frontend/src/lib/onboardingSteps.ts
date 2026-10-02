@@ -124,7 +124,7 @@ export const onboardingSteps: OnboardingStep[] = [
     selector: '[data-tour="talentpool-reevaluate"]',
     title: '⭐ Banco de Talentos',
     description:
-      'Candidatos sem vaga compatível no momento ficam aqui. Clique em "Reclassificar com IA" pra reavaliar todos de uma vez contra as vagas abertas — isso também acontece automaticamente sempre que uma vaga nova é cadastrada.',
+      'Candidatos sem vaga compatível no momento ficam aqui. Clique em "Reclassificar esta página" pra reavaliar os candidatos da página atual contra as vagas abertas — isso também acontece automaticamente (em lotes) sempre que uma vaga nova é cadastrada.',
     side: 'bottom',
     roles: OPERATORS,
   },

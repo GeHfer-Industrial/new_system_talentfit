@@ -58,13 +58,13 @@ export default function TalentPoolPage() {
   const changeSearch = (value: string) => { setSearch(value); setPage(1) }
   const changeFilterJobId = (value: string) => { setFilterJobId(value); setPage(1) }
 
-  const runReEvaluateAll = async () => {
-    // Busca todos os candidatos do banco de talentos, independente da página/filtro
-    // exibido na tela no momento.
-    const res = await api.get('/talent-pool', { params: { page: 1, pageSize: 10000 } })
-    const entries = (res.data?.data?.items ?? []) as PoolEntry[]
+  const runReEvaluatePage = async () => {
+    // Reavalia só os candidatos da página atual — evitar buscar o banco de talentos
+    // inteiro de uma vez, que com muitos candidatos levaria horas e exigiria manter
+    // a aba aberta o tempo todo.
+    const entries = pool ?? []
     if (!entries.length) {
-      toast('Banco de talentos vazio', { icon: 'ℹ️' })
+      toast('Nenhum candidato nesta página', { icon: 'ℹ️' })
       return
     }
 
@@ -99,13 +99,13 @@ export default function TalentPoolPage() {
     if (rateLimited) {
       const waitLabel = retryAfterMs ? `em ~${formatWaitDuration(retryAfterMs)}` : 'em alguns instantes'
       toast(
-        `${processed} de ${entries.length} reclassificado(s) — limite de uso da IA atingido. Tente novamente ${waitLabel}.`,
+        `${processed} de ${entries.length} reclassificado(s) nesta página — limite de uso da IA atingido. Tente novamente ${waitLabel}.`,
         { icon: '⏳', duration: 8000 },
       )
     } else if (nowCompatible > 0) {
-      toast.success(`${processed} reclassificados — ${nowCompatible} agora compatíveis com vagas!`)
+      toast.success(`${processed} reclassificados nesta página — ${nowCompatible} agora compatíveis com vagas!`)
     } else {
-      toast.success(`${processed} currículos reclassificados`)
+      toast.success(`${processed} currículos desta página reclassificados`)
     }
   }
 
@@ -181,12 +181,12 @@ export default function TalentPoolPage() {
           variant="secondary"
           size="sm"
           loading={!!reEvaluateAllProgress}
-          onClick={runReEvaluateAll}
-          title="Reclassifica, um por um, todos os candidatos com IA usando as vagas abertas atuais"
+          onClick={runReEvaluatePage}
+          title="Reclassifica, um por um, os candidatos desta página com IA usando as vagas abertas atuais"
           data-tour="talentpool-reevaluate"
         >
           <RefreshCw className="h-4 w-4" />
-          {reEvaluateAllProgress ? `Reclassificando ${reEvaluateAllProgress.current}/${reEvaluateAllProgress.total}...` : 'Reclassificar com IA'}
+          {reEvaluateAllProgress ? `Reclassificando ${reEvaluateAllProgress.current}/${reEvaluateAllProgress.total}...` : 'Reclassificar esta página'}
         </Button>
       </div>
 

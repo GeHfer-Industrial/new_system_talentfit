@@ -77,8 +77,14 @@ export class TalentPoolService {
     return { items, total, page: currentPage, pageSize: currentPageSize };
   }
 
-  async reEvaluate() {
+  // Limitado a um "lote" por chamada (ao invés do banco de talentos inteiro) para
+  // não estourar o timeout de 30s da função serverless quando o banco crescer.
+  // Como roda em segundo plano na criação de vaga, o restante do banco só é
+  // coberto quando o RH clicar em "Reclassificar com IA" nas próximas páginas.
+  async reEvaluate(limit = 15) {
     const entries = await this.prisma.talentPool.findMany({
+      take: limit,
+      orderBy: { addedAt: 'asc' },
       include: {
         candidate: {
           include: {
