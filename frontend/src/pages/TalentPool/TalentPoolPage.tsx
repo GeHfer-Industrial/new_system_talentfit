@@ -38,7 +38,8 @@ export default function TalentPoolPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
   const [selectedJobId, setSelectedJobId] = useState('')
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
-  const [reEvaluateAllProgress, setReEvaluateAllProgress] = useState<{ current: number; total: number } | null>(null)
+  const [pageProgress, setPageProgress] = useState<{ current: number; total: number } | null>(null)
+  const [allProgress, setAllProgress] = useState<{ current: number; total: number } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['talent-pool', search, filterJobId, page],
@@ -58,23 +59,18 @@ export default function TalentPoolPage() {
   const changeSearch = (value: string) => { setSearch(value); setPage(1) }
   const changeFilterJobId = (value: string) => { setFilterJobId(value); setPage(1) }
 
-  const runReEvaluatePage = async () => {
-    // Reavalia só os candidatos da página atual — evitar buscar o banco de talentos
-    // inteiro de uma vez, que com muitos candidatos levaria horas e exigiria manter
-    // a aba aberta o tempo todo.
-    const entries = pool ?? []
-    if (!entries.length) {
-      toast('Nenhum candidato nesta página', { icon: 'ℹ️' })
-      return
-    }
-
+  const reEvaluateEntries = async (
+    entries: PoolEntry[],
+    setProgress: (p: { current: number; total: number } | null) => void,
+    scopeLabel: string,
+  ) => {
     let processed = 0
     let nowCompatible = 0
     let rateLimited = false
     let retryAfterMs: number | undefined
 
     for (let i = 0; i < entries.length; i++) {
-      setReEvaluateAllProgress({ current: i + 1, total: entries.length })
+      setProgress({ current: i + 1, total: entries.length })
       let waitMs = DEFAULT_RECLASSIFY_WAIT_MS
       try {
         const res = await api.post(`/talent-pool/re-evaluate/${entries[i].candidate.id}`)
@@ -94,19 +90,43 @@ export default function TalentPoolPage() {
       if (i < entries.length - 1) await new Promise((resolve) => setTimeout(resolve, waitMs))
     }
 
-    setReEvaluateAllProgress(null)
+    setProgress(null)
 
     if (rateLimited) {
       const waitLabel = retryAfterMs ? `em ~${formatWaitDuration(retryAfterMs)}` : 'em alguns instantes'
       toast(
-        `${processed} de ${entries.length} reclassificado(s) nesta página — limite de uso da IA atingido. Tente novamente ${waitLabel}.`,
+        `${processed} de ${entries.length} reclassificado(s) ${scopeLabel} — limite de uso da IA atingido. Tente novamente ${waitLabel}.`,
         { icon: '⏳', duration: 8000 },
       )
     } else if (nowCompatible > 0) {
-      toast.success(`${processed} reclassificados nesta página — ${nowCompatible} agora compatíveis com vagas!`)
+      toast.success(`${processed} reclassificados ${scopeLabel} — ${nowCompatible} agora compatíveis com vagas!`)
     } else {
-      toast.success(`${processed} currículos desta página reclassificados`)
+      toast.success(`${processed} currículos reclassificados ${scopeLabel}`)
     }
+  }
+
+  const runReEvaluatePage = async () => {
+    // Reavalia só os candidatos da página atual — mais rápido e não exige manter a
+    // aba aberta por muito tempo.
+    const entries = pool ?? []
+    if (!entries.length) {
+      toast('Nenhum candidato nesta página', { icon: 'ℹ️' })
+      return
+    }
+    await reEvaluateEntries(entries, setPageProgress, 'nesta página')
+  }
+
+  const runReEvaluateAll = async () => {
+    // Busca todos os candidatos do banco de talentos, independente da página/filtro
+    // exibido na tela no momento. Pode levar bastante tempo com o banco grande —
+    // é preciso manter a aba aberta até terminar.
+    const res = await api.get('/talent-pool', { params: { page: 1, pageSize: 10000 } })
+    const entries = (res.data?.data?.items ?? []) as PoolEntry[]
+    if (!entries.length) {
+      toast('Banco de talentos vazio', { icon: 'ℹ️' })
+      return
+    }
+    await reEvaluateEntries(entries, setAllProgress, 'no total')
   }
 
   const associate = useMutation({
@@ -180,13 +200,26 @@ export default function TalentPoolPage() {
         <Button
           variant="secondary"
           size="sm"
-          loading={!!reEvaluateAllProgress}
+          loading={!!pageProgress}
+          disabled={!!allProgress}
           onClick={runReEvaluatePage}
           title="Reclassifica, um por um, os candidatos desta página com IA usando as vagas abertas atuais"
           data-tour="talentpool-reevaluate"
         >
           <RefreshCw className="h-4 w-4" />
-          {reEvaluateAllProgress ? `Reclassificando ${reEvaluateAllProgress.current}/${reEvaluateAllProgress.total}...` : 'Reclassificar esta página'}
+          {pageProgress ? `Reclassificando ${pageProgress.current}/${pageProgress.total}...` : 'Reclassificar esta página'}
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={!!allProgress}
+          disabled={!!pageProgress}
+          onClick={runReEvaluateAll}
+          title="Reclassifica, um por um, todos os candidatos do banco de talentos com IA usando as vagas abertas atuais — pode demorar bastante se houver muitos"
+        >
+          <RefreshCw className="h-4 w-4" />
+          {allProgress ? `Reclassificando ${allProgress.current}/${allProgress.total}...` : 'Reclassificar tudo'}
         </Button>
       </div>
 
