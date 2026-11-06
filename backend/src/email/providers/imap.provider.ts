@@ -44,7 +44,21 @@ export class ImapProvider extends EventEmitter {
     subjectFilter?: string,
     limit?: number,
   ): Promise<{ messages: EmailMessage[]; totalUnseen: number; remaining: number }> {
-    return new Promise((resolve, reject) => {
+    return new Promise((outerResolve, outerReject) => {
+      // Garante que a promise só é resolvida/rejeitada uma vez, mesmo que a lib
+      // emita vários eventos (ex.: erro após o fim da conexão).
+      let settled = false;
+      const resolve = (v: { messages: EmailMessage[]; totalUnseen: number; remaining: number }) => {
+        if (settled) return;
+        settled = true;
+        outerResolve(v);
+      };
+      const reject = (e: unknown) => {
+        if (settled) return;
+        settled = true;
+        outerReject(e);
+      };
+
       const imap = new ImapLib({
         user: config.user,
         password: config.password,
@@ -161,7 +175,14 @@ export class ImapProvider extends EventEmitter {
         });
       });
 
-      imap.once('error', (err: Error) => {
+      // `on` (e não `once`): erros emitidos depois do primeiro — inclusive após
+      // imap.end(), enquanto os anexos ainda estão sendo processados — não podem
+      // ficar sem listener, senão derrubam o processo (500 na Vercel).
+      imap.on('error', (err: Error) => {
+        if (settled) {
+          this.logger.warn(`Erro IMAP após o término da busca (ignorado): ${err.message}`);
+          return;
+        }
         this.logger.error(`Erro de conexão IMAP: ${err.message}`);
         reject(err);
       });
@@ -188,7 +209,7 @@ export class ImapProvider extends EventEmitter {
         resolve(true);
       });
 
-      imap.once('error', (err: Error) => {
+      imap.on('error', (err: Error) => {
         this.logger.warn(`Teste de conexão IMAP falhou: ${err.message}`);
         resolve(false);
       });

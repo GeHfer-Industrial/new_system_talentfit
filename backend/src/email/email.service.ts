@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResumeService } from '../resume/resume.service';
-import { ImapProvider } from './providers/imap.provider';
+import { ImapProvider, EmailMessage } from './providers/imap.provider';
 import { SmtpProvider } from './providers/smtp.provider';
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -250,50 +250,66 @@ export class EmailService {
       throw new InternalServerErrorException(this.friendlyImapError(err));
     }
 
+    let failed = 0;
     for (const msg of messages) {
-      const emailRecord = await this.prisma.emailRecord.create({
-        data: { sender: msg.sender, subject: msg.subject, receivedAt: msg.receivedAt },
-      });
-
-      let candidateId: string | undefined;
-      let candidateName: string | undefined;
-
-      for (const attachment of msg.attachments) {
-        try {
-          const resume = await this.resumeService.uploadAndProcess(
-            {
-              fieldname: 'file',
-              originalname: attachment.originalName,
-              encoding: '7bit',
-              mimetype: attachment.mimeType,
-              path: '',
-              filename: attachment.filename,
-              size: attachment.buffer.length,
-              stream: null as never,
-              destination: '',
-              buffer: attachment.buffer,
-            },
-            emailRecord.id,
-          );
-          candidateId ??= resume.candidateId;
-          candidateName ??= resume.candidate.name;
-        } catch (err) {
-          this.logger.error(`Erro ao processar anexo ${attachment.filename}`, err);
-        }
-      }
-
-      await this.prisma.emailRecord.update({
-        where: { id: emailRecord.id },
-        data: { processed: true },
-      });
-
-      if (candidateId && msg.senderEmail && config.sendAutoReply) {
-        await this.sendPreRegistrationReply(config, msg.senderEmail, candidateId, candidateName ?? '');
+      // Um e-mail com problema não pode derrubar o lote inteiro (os e-mails do
+      // lote já foram marcados como lidos no IMAP).
+      try {
+        await this.processMessage(config, msg);
+      } catch (err) {
+        failed++;
+        this.logger.error(
+          `Erro ao processar e-mail de ${msg.senderEmail || msg.sender} ("${msg.subject}")`,
+          err instanceof Error ? err.stack : err,
+        );
       }
     }
 
-    this.logger.log(`Sincronização concluída: ${messages.length} e-mail(s) processados, ${remaining} restante(s)`);
-    return { synced: true, processed: messages.length, totalUnseen, remaining };
+    this.logger.log(`Sincronização concluída: ${messages.length} e-mail(s) processados (${failed} com erro), ${remaining} restante(s)`);
+    return { synced: true, processed: messages.length, failed, totalUnseen, remaining };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async processMessage(config: any, msg: EmailMessage) {
+    const emailRecord = await this.prisma.emailRecord.create({
+      data: { sender: msg.sender, subject: msg.subject, receivedAt: msg.receivedAt },
+    });
+
+    let candidateId: string | undefined;
+    let candidateName: string | undefined;
+
+    for (const attachment of msg.attachments) {
+      try {
+        const resume = await this.resumeService.uploadAndProcess(
+          {
+            fieldname: 'file',
+            originalname: attachment.originalName,
+            encoding: '7bit',
+            mimetype: attachment.mimeType,
+            path: '',
+            filename: attachment.filename,
+            size: attachment.buffer.length,
+            stream: null as never,
+            destination: '',
+            buffer: attachment.buffer,
+          },
+          emailRecord.id,
+        );
+        candidateId ??= resume.candidateId;
+        candidateName ??= resume.candidate.name;
+      } catch (err) {
+        this.logger.error(`Erro ao processar anexo ${attachment.filename}`, err);
+      }
+    }
+
+    await this.prisma.emailRecord.update({
+      where: { id: emailRecord.id },
+      data: { processed: true },
+    });
+
+    if (candidateId && msg.senderEmail && config.sendAutoReply) {
+      await this.sendPreRegistrationReply(config, msg.senderEmail, candidateId, candidateName ?? '');
+    }
   }
 
   async testConnection() {
