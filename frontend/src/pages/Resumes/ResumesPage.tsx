@@ -46,7 +46,7 @@ export default function ResumesPage() {
   const deleteResume = useDeleteResume()
   const updateClassification = useUpdateClassification()
 
-  const EMAIL_SYNC_BATCH_SIZE = 5
+  const EMAIL_SYNC_BATCH_SIZE = 3
 
   const runSyncEmails = async () => {
     setSyncProgress({ current: 0, total: 0 })
@@ -67,7 +67,12 @@ export default function ResumesPage() {
       }
       toast.success(totalProcessed > 0 ? `${totalProcessed} e-mail(s) sincronizados` : 'Nenhum e-mail novo encontrado')
     } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Erro ao sincronizar'
+      const response = (err as { response?: { status?: number; data?: { message?: string } } })?.response
+      const msg =
+        response?.data?.message ??
+        (response?.status === 504
+          ? 'O servidor demorou demais para responder — tente sincronizar novamente'
+          : `Erro ao sincronizar${response?.status ? ` (HTTP ${response.status})` : ''}`)
       toast.error(totalProcessed > 0 ? `${msg} (${totalProcessed} já sincronizados até agora)` : msg)
     } finally {
       setSyncProgress(null)

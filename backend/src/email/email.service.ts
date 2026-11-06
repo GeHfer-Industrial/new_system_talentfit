@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResumeService } from '../resume/resume.service';
-import { ImapProvider, EmailMessage } from './providers/imap.provider';
+import { ImapProvider, EmailMessage, UnreadFetchSession } from './providers/imap.provider';
 import { SmtpProvider } from './providers/smtp.provider';
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -229,44 +229,68 @@ export class EmailService {
     return config;
   }
 
+  /**
+   * Na Vercel a função tem 30s. Cada currículo pode levar até ~20s na IA, então
+   * só começamos um novo e-mail se ainda estivermos dentro desta janela desde o
+   * início da requisição. O primeiro e-mail é sempre processado.
+   */
+  private static readonly MANUAL_SYNC_START_BUDGET_MS = 7000;
+
   async syncNow(limit?: number) {
+    const startedAt = Date.now();
     const config = await this.getSavedConfigOrThrow();
-    return this.performSync(config, limit);
+    return this.performSync(config, limit, startedAt + EmailService.MANUAL_SYNC_START_BUDGET_MS);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async performSync(config: any, limit?: number) {
-    let messages, totalUnseen, remaining;
+  private async performSync(config: any, limit?: number, startDeadline?: number) {
+    let session: UnreadFetchSession;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subjectFilter: string | undefined = (config as any).subjectFilter ?? undefined;
-      ({ messages, totalUnseen, remaining } = await this.imapProvider.fetchUnread(
+      session = await this.imapProvider.fetchUnread(
         { host: config.host, port: config.port, user: config.user, password: config.password },
         subjectFilter,
         limit,
-      ));
+      );
     } catch (err) {
       this.logger.error('Erro de conexão IMAP durante sincronização', err);
       throw new InternalServerErrorException(this.friendlyImapError(err));
     }
 
+    const { messages, totalUnseen } = session;
+    let processed = 0;
     let failed = 0;
-    for (const msg of messages) {
-      // Um e-mail com problema não pode derrubar o lote inteiro (os e-mails do
-      // lote já foram marcados como lidos no IMAP).
-      try {
-        await this.processMessage(config, msg);
-      } catch (err) {
-        failed++;
-        this.logger.error(
-          `Erro ao processar e-mail de ${msg.senderEmail || msg.sender} ("${msg.subject}")`,
-          err instanceof Error ? err.stack : err,
-        );
+    try {
+      for (const msg of messages) {
+        if (processed > 0 && startDeadline && Date.now() > startDeadline) {
+          this.logger.log('Janela de tempo da sincronização esgotada — restante fica para a próxima chamada');
+          break;
+        }
+
+        // Um e-mail com problema não pode derrubar o lote inteiro.
+        try {
+          await this.processMessage(config, msg);
+        } catch (err) {
+          failed++;
+          this.logger.error(
+            `Erro ao processar e-mail de ${msg.senderEmail || msg.sender} ("${msg.subject}")`,
+            err instanceof Error ? err.stack : err,
+          );
+        }
+
+        // Só marca como lido DEPOIS de processar: se a função for interrompida
+        // antes disso, o e-mail continua não lido e é reprocessado depois.
+        await session.markSeen([msg.uid]);
+        processed++;
       }
+    } finally {
+      session.close();
     }
 
-    this.logger.log(`Sincronização concluída: ${messages.length} e-mail(s) processados (${failed} com erro), ${remaining} restante(s)`);
-    return { synced: true, processed: messages.length, failed, totalUnseen, remaining };
+    const remaining = Math.max(totalUnseen - processed, 0);
+    this.logger.log(`Sincronização concluída: ${processed} e-mail(s) processados (${failed} com erro), ${remaining} restante(s)`);
+    return { synced: true, processed, failed, totalUnseen, remaining };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

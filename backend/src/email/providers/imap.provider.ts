@@ -15,6 +15,7 @@ export interface EmailAttachment {
 }
 
 export interface EmailMessage {
+  uid: number;
   sender: string;
   senderEmail: string;
   subject: string;
@@ -29,6 +30,19 @@ export interface ImapConfig {
   password: string;
 }
 
+/**
+ * Resultado de uma busca de e-mails não lidos. A conexão IMAP continua aberta
+ * para que cada e-mail seja marcado como lido só DEPOIS de processado — se a
+ * função for interrompida (timeout da Vercel), os e-mails não processados
+ * continuam como não lidos e entram na próxima sincronização.
+ */
+export interface UnreadFetchSession {
+  messages: EmailMessage[];
+  totalUnseen: number;
+  markSeen(uids: number[]): Promise<void>;
+  close(): void;
+}
+
 const RESUME_EXTENSIONS = ['.pdf', '.docx'];
 
 @Injectable()
@@ -39,16 +53,61 @@ export class ImapProvider extends EventEmitter {
     return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
+  /** Retorna os dados do e-mail, ou undefined se ele não deve ser processado. */
+  private async parseMessage(
+    raw: Buffer,
+    subjectFilter: string | undefined,
+    seqno: number,
+  ): Promise<Omit<EmailMessage, 'uid'> | undefined> {
+    try {
+      const parsed = await simpleParser(raw);
+      const subject = parsed.subject ?? '';
+
+      if (subjectFilter && !this.normalizeStr(subject).includes(this.normalizeStr(subjectFilter))) {
+        this.logger.log(`E-mail ignorado (assunto não contém "${subjectFilter}"): "${subject}" — #${seqno}`);
+        return undefined;
+      }
+
+      const attachments: EmailAttachment[] = [];
+      for (const att of parsed.attachments ?? []) {
+        const ext = path.extname(att.filename ?? '').toLowerCase();
+        if (!RESUME_EXTENSIONS.includes(ext)) continue;
+
+        const saveName = `${randomUUID()}${ext}`;
+        attachments.push({
+          filename: saveName,
+          originalName: att.filename ?? saveName,
+          mimeType: att.contentType,
+          buffer: att.content,
+        });
+        this.logger.log(`Anexo recebido: ${saveName}`);
+      }
+
+      if (!attachments.length) return undefined;
+
+      return {
+        sender: parsed.from?.text ?? 'desconhecido',
+        senderEmail: parsed.from?.value?.[0]?.address ?? '',
+        subject,
+        receivedAt: parsed.date ?? new Date(),
+        attachments,
+      };
+    } catch (parseErr) {
+      this.logger.warn(`Erro ao processar mensagem #${seqno}: ${parseErr}`);
+      return undefined;
+    }
+  }
+
   async fetchUnread(
     config: ImapConfig,
     subjectFilter?: string,
     limit?: number,
-  ): Promise<{ messages: EmailMessage[]; totalUnseen: number; remaining: number }> {
+  ): Promise<UnreadFetchSession> {
     return new Promise((outerResolve, outerReject) => {
       // Garante que a promise só é resolvida/rejeitada uma vez, mesmo que a lib
       // emita vários eventos (ex.: erro após o fim da conexão).
       let settled = false;
-      const resolve = (v: { messages: EmailMessage[]; totalUnseen: number; remaining: number }) => {
+      const resolve = (v: UnreadFetchSession) => {
         if (settled) return;
         settled = true;
         outerResolve(v);
@@ -71,6 +130,25 @@ export class ImapProvider extends EventEmitter {
       });
 
       const messages: EmailMessage[] = [];
+      // E-mails que não serão processados (assunto fora do filtro, sem anexo de
+      // currículo, erro de parse) — marcados como lidos já na busca.
+      const skippedUids: number[] = [];
+
+      const close = () => {
+        try {
+          imap.end();
+        } catch {
+          /* conexão já encerrada */
+        }
+      };
+      const markSeen = (uidsToMark: number[]) =>
+        new Promise<void>((res) => {
+          if (!uidsToMark.length) return res();
+          imap.addFlags(uidsToMark, '\\Seen', (flagErr: Error) => {
+            if (flagErr) this.logger.warn(`Erro ao marcar como lido (${uidsToMark.join(',')}): ${flagErr}`);
+            res();
+          });
+        });
 
       imap.once('ready', () => {
         imap.openBox('INBOX', false, (err: Error) => {
@@ -86,8 +164,8 @@ export class ImapProvider extends EventEmitter {
             }
 
             if (!uids || !uids.length) {
-              imap.end();
-              return resolve({ messages: [], totalUnseen: 0, remaining: 0 });
+              close();
+              return resolve({ messages: [], totalUnseen: 0, markSeen: async () => {}, close: () => {} });
             }
 
             const totalUnseen = uids.length;
@@ -99,56 +177,31 @@ export class ImapProvider extends EventEmitter {
             const pending: Promise<void>[] = [];
 
             fetch.on('message', (msg: NodeJS.EventEmitter, seqno: number) => {
+              let uid: number | undefined;
+              const attrsReady = new Promise<void>((resAttrs) => {
+                msg.once('attributes', (attrs: { uid: number }) => {
+                  uid = attrs.uid;
+                  resAttrs();
+                });
+                msg.once('end', () => resAttrs());
+              });
+
               const p = new Promise<void>((res) => {
                 const chunks: Buffer[] = [];
 
                 msg.on('body', (stream: NodeJS.ReadableStream) => {
                   stream.on('data', (chunk: Buffer) => chunks.push(chunk));
                   stream.once('end', async () => {
-                    try {
-                      const raw = Buffer.concat(chunks);
-                      const parsed = await simpleParser(raw);
-                      const subject = parsed.subject ?? '';
+                    const parsedMessage = await this.parseMessage(Buffer.concat(chunks), subjectFilter, seqno);
 
-                      if (subjectFilter) {
-                        const norm = this.normalizeStr.bind(this);
-                        if (!norm(subject).includes(norm(subjectFilter))) {
-                          this.logger.log(`E-mail ignorado (assunto não contém "${subjectFilter}"): "${subject}" — #${seqno}`);
-                          return res();
-                        }
-                      }
-
-                      const attachments: EmailAttachment[] = [];
-
-                      for (const att of parsed.attachments ?? []) {
-                        const ext = path.extname(att.filename ?? '').toLowerCase();
-                        if (!RESUME_EXTENSIONS.includes(ext)) continue;
-
-                        const saveName = `${randomUUID()}${ext}`;
-
-                        attachments.push({
-                          filename: saveName,
-                          originalName: att.filename ?? saveName,
-                          mimeType: att.contentType,
-                          buffer: att.content,
-                        });
-
-                        this.logger.log(`Anexo recebido: ${saveName}`);
-                      }
-
-                      if (attachments.length > 0) {
-                        messages.push({
-                          sender: parsed.from?.text ?? 'desconhecido',
-                          senderEmail: parsed.from?.value?.[0]?.address ?? '',
-                          subject,
-                          receivedAt: parsed.date ?? new Date(),
-                          attachments,
-                        });
-                      }
-                    } catch (parseErr) {
-                      this.logger.warn(`Erro ao processar mensagem #${seqno}: ${parseErr}`);
+                    await attrsReady;
+                    if (uid === undefined) {
+                      this.logger.warn(`Mensagem #${seqno} sem UID — ignorada`);
+                    } else if (parsedMessage) {
+                      messages.push({ uid, ...parsedMessage });
+                    } else {
+                      skippedUids.push(uid);
                     }
-
                     res();
                   });
                 });
@@ -159,12 +212,10 @@ export class ImapProvider extends EventEmitter {
 
             fetch.once('end', async () => {
               await Promise.all(pending);
-
-              imap.addFlags(targetUids, '\\Seen', (flagErr: Error) => {
-                if (flagErr) this.logger.warn(`Erro ao marcar como lido: ${flagErr}`);
-                imap.end();
-                resolve({ messages, totalUnseen, remaining: totalUnseen - targetUids.length });
-              });
+              await markSeen(skippedUids);
+              // Ordena do mais antigo para o mais novo (o fetch pode chegar fora de ordem).
+              messages.sort((a, b) => a.uid - b.uid);
+              resolve({ messages, totalUnseen: totalUnseen - skippedUids.length, markSeen, close });
             });
 
             fetch.once('error', (fetchErr: Error) => {
