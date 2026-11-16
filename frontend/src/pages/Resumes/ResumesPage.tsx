@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { Upload, Download, Trash2, RefreshCw, Loader2, Pencil, ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -25,11 +25,49 @@ function PreRegistrationStatusBadge({ preRegistration }: { preRegistration: { be
 
 const PAGE_SIZE = 20
 
+/** Números de página a exibir, com null onde entram reticências. Ex.: 1 … 4 5 6 … 12 */
+function pageNumbers(current: number, total: number): (number | null)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages = new Set([1, total, current - 1, current, current + 1])
+  if (current <= 3) [2, 3, 4].forEach((p) => pages.add(p))
+  if (current >= total - 2) [total - 3, total - 2, total - 1].forEach((p) => pages.add(p))
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b)
+  const result: (number | null)[] = []
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - sorted[i - 1] > 1) result.push(null)
+    result.push(p)
+  })
+  return result
+}
+
 export default function ResumesPage() {
-  const [classification, setClassification] = useState<Classification | ''>('')
-  const [jobId, setJobId] = useState('')
-  const [evaluated, setEvaluated] = useState<'' | 'true' | 'false'>('')
-  const [page, setPage] = useState(1)
+  // Filtros e página ficam na URL (?classification=&jobId=&evaluated=&page=) para
+  // que, ao abrir um currículo e voltar (botão "Voltar" ou navegador), a lista
+  // reabra exatamente onde estava.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const classification = (searchParams.get('classification') ?? '') as Classification | ''
+  const jobId = searchParams.get('jobId') ?? ''
+  const evaluatedParam = searchParams.get('evaluated')
+  const evaluated: '' | 'true' | 'false' = evaluatedParam === 'true' || evaluatedParam === 'false' ? evaluatedParam : ''
+  const page = Math.max(1, Number(searchParams.get('page')) || 1)
+
+  const updateParams = (changes: Record<string, string | number | null>) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(changes)) {
+          if (value === null || value === '' || (key === 'page' && value === 1)) next.delete(key)
+          else next.set(key, String(value))
+        }
+        return next
+      },
+      { replace: true },
+    )
+  }
+  const setPage = (p: number) => updateParams({ page: p })
+  const setFilter = (key: 'classification' | 'jobId' | 'evaluated', value: string) =>
+    updateParams({ [key]: value, page: null })
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -183,6 +221,12 @@ export default function ResumesPage() {
   const resumes = data?.items
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // Se a página da URL deixou de existir (ex.: currículos excluídos), vai para a última.
+  useEffect(() => {
+    if (data && page > totalPages) setPage(totalPages)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, page, totalPages])
   const { data: jobs } = useJobs()
 
   const runReclassifyBatch = async (
@@ -311,7 +355,7 @@ export default function ResumesPage() {
         <div className="flex items-center gap-2 flex-wrap" data-tour="resumes-filters">
           <select
             value={classification}
-            onChange={(e) => { setClassification(e.target.value as Classification | ''); setPage(1) }}
+            onChange={(e) => setFilter('classification', e.target.value)}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">Todas as classificações</option>
@@ -321,7 +365,7 @@ export default function ResumesPage() {
           </select>
           <select
             value={jobId}
-            onChange={(e) => { setJobId(e.target.value); setPage(1) }}
+            onChange={(e) => setFilter('jobId', e.target.value)}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">Todas as vagas</option>
@@ -329,7 +373,7 @@ export default function ResumesPage() {
           </select>
           <select
             value={evaluated}
-            onChange={(e) => { setEvaluated(e.target.value as '' | 'true' | 'false'); setPage(1) }}
+            onChange={(e) => setFilter('evaluated', e.target.value)}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">Avaliados e não avaliados</option>
@@ -485,7 +529,7 @@ export default function ResumesPage() {
                     <td className="px-6 py-3 text-slate-500">{new Date(r.createdAt).toLocaleDateString('pt-BR')}</td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <Link to={`/resumes/${r.id}`} className="text-primary text-xs font-medium hover:underline">
+                        <Link to={`/resumes/${r.id}`} state={{ from: `${location.pathname}${location.search}` }} className="text-primary text-xs font-medium hover:underline">
                           Ver detalhe
                         </Link>
                         {r.candidate.resumeFile && (
@@ -535,21 +579,37 @@ export default function ResumesPage() {
           <p className="text-xs text-slate-500">
             Página {page} de {totalPages} — {total} currículo{total !== 1 ? 's' : ''} no total
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 flex-wrap">
             <Button
               variant="secondary"
               size="sm"
               disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => setPage(Math.max(1, page - 1))}
             >
               <ChevronLeft className="h-4 w-4" />
               Anterior
             </Button>
+            {pageNumbers(page, totalPages).map((p, i) =>
+              p === null ? (
+                <span key={`gap-${i}`} className="px-1 text-sm text-slate-400">…</span>
+              ) : (
+                <Button
+                  key={p}
+                  variant={p === page ? 'primary' : 'ghost'}
+                  size="sm"
+                  aria-current={p === page ? 'page' : undefined}
+                  onClick={() => setPage(p)}
+                  className="min-w-[2rem] justify-center"
+                >
+                  {p}
+                </Button>
+              ),
+            )}
             <Button
               variant="secondary"
               size="sm"
               disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
             >
               Próxima
               <ChevronRight className="h-4 w-4" />

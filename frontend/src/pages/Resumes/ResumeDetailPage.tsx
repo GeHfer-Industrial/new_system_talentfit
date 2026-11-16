@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Download, Trash2, Mail, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useResume, useUpdateClassification, useDeleteResume, useSendPreRegistrationEmail, Classification } from '../../hooks/useResumes'
@@ -66,6 +66,10 @@ export default function ResumeDetailPage() {
   const deleteResume = useDeleteResume()
   const sendPreRegistrationEmail = useSendPreRegistrationEmail()
   const navigate = useNavigate()
+  const location = useLocation()
+  // A lista envia sua URL (com filtros e página) ao abrir o currículo; voltamos para ela.
+  const fromState = (location.state as { from?: string } | null)?.from
+  const backTo = fromState?.startsWith('/resumes') ? fromState : '/resumes'
   const [changeJobOpen, setChangeJobOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState('')
   const [pendingAction, setPendingAction] = useState<string | null>(null)
@@ -77,7 +81,7 @@ export default function ResumeDetailPage() {
   const doDelete = async () => {
     await deleteResume.mutateAsync(resume.id)
     toast.success('Currículo excluído')
-    navigate('/resumes')
+    navigate(backTo)
   }
 
   const doSendEmail = async () => {
@@ -105,7 +109,7 @@ export default function ResumeDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between print:hidden">
-        <Link to="/resumes" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+        <Link to={backTo} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <ArrowLeft className="h-4 w-4" /> Voltar para currículos
         </Link>
         <div className="flex items-center gap-2">
